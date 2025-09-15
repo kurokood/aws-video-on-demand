@@ -38,6 +38,7 @@ variable "sns_topic" {
   type = object({
     arn = string
   })
+  default = null
 }
 
 variable "sqs_queue" {

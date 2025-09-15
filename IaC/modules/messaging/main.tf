@@ -1,7 +1,9 @@
 # Messaging module - SNS and SQS for Video on Demand
 
-# SNS Topic
+# SNS Topic (only if SNS is enabled)
 resource "aws_sns_topic" "vod_notifications" {
+  count = var.enable_sns ? 1 : 0
+  
   name              = "${var.stack_name}-Notifications"
   display_name      = "${var.stack_name}-Notifications"
   kms_master_key_id = "alias/aws/sns"
@@ -11,9 +13,11 @@ resource "aws_sns_topic" "vod_notifications" {
   }
 }
 
-# SNS Subscription
+# SNS Subscription (only if SNS is enabled)
 resource "aws_sns_topic_subscription" "email_notification" {
-  topic_arn = aws_sns_topic.vod_notifications.arn
+  count = var.enable_sns ? 1 : 0
+  
+  topic_arn = aws_sns_topic.vod_notifications[0].arn
   protocol  = "email"
   endpoint  = var.admin_email
 }

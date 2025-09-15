@@ -218,7 +218,7 @@ resource "aws_iam_policy" "error_handler_policy" {
       {
         Effect   = "Allow"
         Action   = "sns:Publish"
-        Resource = var.sns_topic.arn
+        Resource = var.sns_topic != null ? var.sns_topic.arn : ""
         Condition = {
           Bool = {
             "aws:SecureTransport" = "true"
@@ -254,7 +254,7 @@ resource "aws_lambda_function" "error_handler" {
       SOLUTION_IDENTIFIER                 = local.solution_identifier
       AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
       DynamoDBTable                       = var.dynamodb_table.name
-      SnsTopic                            = var.sns_topic.arn
+      SnsTopic                            = var.sns_topic != null ? var.sns_topic.arn : ""
       EnableSns                           = var.enable_sns ? "true" : "false"
     }
   }
@@ -948,7 +948,7 @@ resource "aws_iam_policy" "sns_notification_policy" {
       {
         Effect   = "Allow"
         Action   = "sns:Publish"
-        Resource = var.sns_topic.arn
+        Resource = var.sns_topic != null ? var.sns_topic.arn : ""
         Condition = {
           Bool = {
             "aws:SecureTransport" = "true"
@@ -984,7 +984,7 @@ resource "aws_lambda_function" "sns_notification" {
       SOLUTION_IDENTIFIER                 = local.solution_identifier
       AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
       ErrorHandler                        = aws_lambda_function.error_handler.arn
-      SnsTopic                            = var.sns_topic.arn
+      SnsTopic                            = var.sns_topic != null ? var.sns_topic.arn : ""
       EnableSns                           = var.enable_sns ? "true" : "false"
     }
   }

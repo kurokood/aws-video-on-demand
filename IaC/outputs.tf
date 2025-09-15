@@ -22,7 +22,7 @@ output "cloudfront_domain_name" {
 
 output "sns_topic_name" {
   description = "SNS Topic Name"
-  value       = module.messaging.sns_topic_name
+  value       = local.enable_sns ? module.messaging.sns_topic_name : "SNS disabled"
 }
 
 output "sqs_queue_url" {

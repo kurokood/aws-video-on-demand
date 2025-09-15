@@ -76,7 +76,7 @@ module "lambda" {
   source_bucket      = module.storage.source_bucket
   destination_bucket = module.storage.destination_bucket
   dynamodb_table     = module.database.dynamodb_table
-  sns_topic          = module.messaging.sns_topic
+  sns_topic          = local.enable_sns ? module.messaging.sns_topic : null
   sqs_queue = {
     arn = module.messaging.sqs_queue_arn
     url = module.messaging.sqs_queue_url

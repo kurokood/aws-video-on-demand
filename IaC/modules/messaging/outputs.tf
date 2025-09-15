@@ -1,16 +1,16 @@
 output "sns_topic" {
   description = "SNS topic"
-  value       = aws_sns_topic.vod_notifications
+  value       = var.enable_sns ? aws_sns_topic.vod_notifications[0] : null
 }
 
 output "sns_topic_name" {
   description = "SNS topic name"
-  value       = aws_sns_topic.vod_notifications.name
+  value       = var.enable_sns ? aws_sns_topic.vod_notifications[0].name : null
 }
 
 output "sns_topic_arn" {
   description = "SNS topic ARN"
-  value       = aws_sns_topic.vod_notifications.arn
+  value       = var.enable_sns ? aws_sns_topic.vod_notifications[0].arn : null
 }
 
 output "sqs_queue" {

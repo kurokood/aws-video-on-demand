@@ -2,11 +2,11 @@ const aws = require('aws-sdk');
 const https = require('https');
 const url = require('url');
 
-// Initialize AWS services
-const mediaconvert = new aws.MediaConvert();
-const mediapackageVod = new aws.MediaPackageVod();
-const cloudfront = new aws.CloudFront();
-const s3 = new aws.S3();
+// Initialize AWS services (endpoints will be set dynamically)
+let mediaconvert;
+let mediapackageVod;
+let cloudfront;
+let s3;
 
 /**
  * Custom Resource Lambda Function for MediaConvert and MediaPackage
@@ -14,6 +14,12 @@ const s3 = new aws.S3();
  */
 exports.handler = async (event, context) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
+    
+    // Initialize AWS services
+    mediaconvert = new aws.MediaConvert();
+    mediapackageVod = new aws.MediaPackageVod();
+    cloudfront = new aws.CloudFront();
+    s3 = new aws.S3();
     
     const responseData = {};
     let responseStatus = 'SUCCESS';
@@ -80,12 +86,18 @@ exports.handler = async (event, context) => {
  * Get MediaConvert endpoint URL
  */
 async function getMediaConvertEndpoint() {
-    const params = {
-        MaxResults: 1
-    };
-    
-    const result = await mediaconvert.describeEndpoints(params).promise();
-    return result.Endpoints[0].Url;
+    try {
+        const params = {
+            MaxResults: 1
+        };
+        
+        const result = await mediaconvert.describeEndpoints(params).promise();
+        console.log('MediaConvert endpoints:', JSON.stringify(result, null, 2));
+        return result.Endpoints[0].Url;
+    } catch (error) {
+        console.error('Error getting MediaConvert endpoint:', error);
+        throw error;
+    }
 }
 
 /**
@@ -96,6 +108,8 @@ async function handleMediaConvertTemplates(properties, responseData) {
     const enableMediaPackage = properties.EnableMediaPackage === 'true';
     const enableNewTemplates = properties.EnableNewTemplates === 'Yes';
     const endpoint = properties.EndPoint;
+    
+    console.log(`MediaConvert Template Creation - Stack: ${stackName}, EnableMediaPackage: ${properties.EnableMediaPackage} (${enableMediaPackage}), EnableNewTemplates: ${properties.EnableNewTemplates} (${enableNewTemplates}), Endpoint: ${endpoint}`);
     
     // Set custom endpoint for MediaConvert
     mediaconvert.endpoint = endpoint;
@@ -125,10 +139,14 @@ async function handleMediaConvertTemplates(properties, responseData) {
     for (const config of templateConfigs) {
         try {
             const template = generateJobTemplate(config, stackName);
+            console.log(`Creating template: ${config.name}`);
+            console.log('Template configuration:', JSON.stringify(template, null, 2));
+            
             await mediaconvert.createJobTemplate(template).promise();
             createdTemplates.push(config.name);
-            console.log(`Created template: ${config.name}`);
+            console.log(`Successfully created template: ${config.name}`);
         } catch (error) {
+            console.error(`Error creating template ${config.name}:`, error);
             if (error.code !== 'ConflictException') {
                 throw error;
             }
@@ -690,6 +708,7 @@ async function deleteMediaConvertTemplates(properties) {
     const stackName = properties.StackName;
     const endpoint = properties.EndPoint;
     
+    // Set custom endpoint for MediaConvert
     mediaconvert.endpoint = endpoint;
     
     const templateNames = [
