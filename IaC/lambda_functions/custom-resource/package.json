@@ -1,0 +1,14 @@
+{
+  "name": "vod-custom-resource",
+  "version": "1.0.0",
+  "description": "Custom Resource Lambda for MediaConvert and MediaPackage VOD",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1691.0"
+  },
+  "author": "AWS Solutions",
+  "license": "Apache-2.0"
+}

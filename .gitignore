@@ -1,0 +1,115 @@
+# =====================================
+# Video on Demand on AWS - .gitignore
+# =====================================
+
+# =====================================
+# TERRAFORM STATE AND SECRETS
+# =====================================
+# Never commit these - they contain sensitive information and state
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.terraform/
+.terraform.lock.hcl
+terraform.tfplan
+terraform.tfplan.*
+
+# =====================================
+# BUILD ARTIFACTS AND DEPENDENCIES
+# =====================================
+# Compiled outputs
+**/dist
+**/build
+**/global-s3-assets
+**/regional-s3-assets
+**/open-source
+**/.zip
+
+# Node.js dependencies and artifacts  
+**/node_modules
+**/npm-debug.log
+**/package-lock.json
+
+# Python artifacts
+**/__pycache__
+**/pytests
+**/*.egg-info
+**/*.pyc
+**/pypackage
+
+# =====================================
+# LAMBDA FUNCTION PACKAGES
+# =====================================
+# Allow lambda source code but ignore generated zips and dependencies
+# The dependencies are installed by the create-lambda-functions-dependencies.ps1 script
+IaC/modules/lambda/lambda_zips/
+**/lambda_zips/
+
+# =====================================
+# DEVELOPMENT AND TESTING
+# =====================================
+# Test coverage and temporary files
+**/source/test
+**source/**/.coverage
+**source/**/coverage
+*.log
+*.tmp
+
+# Custom resource response files
+response.json
+payload.json
+
+# Development scripts (project-specific)
+codescan-funcs.sh
+codescan-postbuild-default.sh
+codescan-prebuild-default.sh
+codescan-unified-default.sh
+
+# =====================================
+# IDE AND SYSTEM FILES
+# =====================================
+# Visual Studio Code
+**/.vscode
+**/.vscode/settings.json
+
+# JetBrains IDEs
+.idea/
+
+# Vim
+*.swp
+*.swo
+
+# macOS
+**/.DS_Store
+
+# Windows
+Thumbs.db
+
+# =====================================
+# ALLOWED FILES FOR REPOSITORY
+# =====================================
+# These files SHOULD be committed:
+# - Source code (*.js, *.py, *.tf)
+# - Documentation (*.md, *.txt)
+# - Configuration templates (*.example, *.template)
+# - Infrastructure definitions (main.tf, variables.tf, outputs.tf)
+# - Scripts (*.ps1, *.sh)
+# - Media templates (*.json in mediaconvert-templates/)
+# - Package definitions (package.json without node_modules)
+
+# =====================================
+# SECURITY NOTES
+# =====================================
+# Never commit:
+# - AWS credentials or secrets
+# - terraform.tfvars (contains email and configuration)
+# - Terraform state files (may contain sensitive outputs)
+# - node_modules (large and should be installed via npm)
+# - Build artifacts (can be regenerated)
+#
+# Always commit:
+# - terraform.tfvars.example (template for configuration)
+# - All source code and infrastructure definitions
+# - Documentation and scripts
+# - Configuration templates

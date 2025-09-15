@@ -1,0 +1,10 @@
+{
+  "name": "step-functions",
+  "version": "1.0.0",
+  "description": "Step Functions Lambda for Video on Demand",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-sfn": "^3.0.0",
+    "uuid": "^9.0.0"
+  }
+}

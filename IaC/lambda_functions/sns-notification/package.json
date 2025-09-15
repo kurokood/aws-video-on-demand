@@ -1,0 +1,9 @@
+{
+  "name": "sns-notification",
+  "version": "1.0.0",
+  "description": "SNS Notification Lambda for Video on Demand",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.0.0"
+  }
+}

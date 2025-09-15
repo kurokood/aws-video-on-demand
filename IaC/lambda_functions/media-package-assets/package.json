@@ -1,0 +1,23 @@
+{
+  "name": "media-package-assets",
+  "version": "1.0.0",
+  "description": "Ingests an asset into MediaPackage-VOD",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "mediapackage",
+    "vod",
+    "aws"
+  ],
+  "author": "AWS Solutions",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/client-mediapackage-vod": "^3.0.0",
+    "@aws-sdk/client-lambda": "^3.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}

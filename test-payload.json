@@ -1,0 +1,12 @@
+{
+  "RequestType": "Create",
+  "ResponseURL": "https://httpbin.org/put",
+  "StackId": "test-stack",
+  "RequestId": "test-request",
+  "ResourceType": "Custom::MediaConvertTemplates",
+  "LogicalResourceId": "TestMediaConvertTemplates",
+  "ResourceProperties": {
+    "StackName": "vod",
+    "enableNewTemplates": "Yes"
+  }
+}
