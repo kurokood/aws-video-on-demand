@@ -87,7 +87,7 @@ output "custom_resource_lambda_arn" {
 
 output "video_upload_instructions" {
   description = "Instructions for uploading videos to trigger the workflow"
-  value       = "Upload your video files (.mp4, .mov, .avi, etc.) to: s3://${module.storage.source_bucket_name}/"
+  value       = "Upload your video files (MP4, MPG, M4V, MOV, M2TS, AVI, MKV, WMV, FLV, WebM, 3GP, ASF, VOB, etc.) to: s3://${module.storage.source_bucket_name}/"
 }
 
 output "workflow_monitoring" {

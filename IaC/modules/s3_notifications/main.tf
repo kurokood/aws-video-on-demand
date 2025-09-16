@@ -21,5 +21,17 @@ resource "aws_s3_bucket_notification" "source_bucket_notification" {
     filter_suffix = var.workflow_trigger == "VideoFile" ? ".mp4" : ".json"
   }
 
+  # Additional notifications for other video file types when VideoFile trigger is enabled
+  dynamic "lambda_function" {
+    for_each = var.workflow_trigger == "VideoFile" ? [
+      ".mpg", ".m4v", ".mov", ".m2ts", ".avi", ".mkv", ".wmv", ".flv", ".webm", ".3gp", ".ts", ".mts"
+    ] : []
+    content {
+      lambda_function_arn = var.step_functions_lambda_arn
+      events              = ["s3:ObjectCreated:*"]
+      filter_suffix       = lambda_function.value
+    }
+  }
+
   depends_on = [aws_lambda_permission.allow_s3_invoke]
 }

@@ -84,22 +84,12 @@ These scripts should be run after the Terraform deployment is complete.
 
 ### S3 Event Notifications
 
-The S3 event notifications that trigger the workflow are not configured in this basic implementation. You'll need to add:
+The S3 event notifications that trigger the workflow are configured in the `s3_notifications` module and support multiple video file formats. When `workflow_trigger` is set to "VideoFile", the system will automatically trigger on the following video file extensions:
 
-```hcl
-resource "aws_s3_bucket_notification" "source_bucket_notification" {
-  bucket = module.storage.source_bucket.id
+- **MP4, MPG, MPEG, M4V, MOV, M2TS, MTS, TS**
+- **AVI, MKV, WMV, FLV, WebM, 3GP, ASF, VOB**
 
-  lambda_function {
-    lambda_function_arn = module.lambda.step_functions_lambda_arn
-    events              = ["s3:ObjectCreated:*"]
-    filter_prefix       = ""
-    filter_suffix       = ".mp4"
-  }
-
-  depends_on = [aws_lambda_permission.allow_bucket]
-}
-```
+The configuration automatically creates separate S3 event notifications for each supported file type to ensure reliable triggering of the video processing workflow.
 
 ## Variables
 

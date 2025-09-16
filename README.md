@@ -69,7 +69,8 @@ input-validate lambda function (which is the first step in the ingest process).
 #### Source Video Option
 If deployed with the workflow trigger parameter set to VideoFile, the CloudFormation template will
 configure S3 event notifications on the source S3 bucket to trigger the workflow whenever a video
-file (mpg, mp4, m4v, mov, or m2ts) is uploaded.
+file is uploaded. Supported video formats include: MP4, MPG, MPEG, M4V, MOV, M2TS, MTS, TS, AVI, 
+MKV, WMV, FLV, WebM, 3GP, ASF, and VOB.
 
 #### Source Metadata Option
 If deployed with the workflow trigger parameter set to MetadataFile, the S3 notification is

@@ -31,12 +31,22 @@ exports.handler = async (event) => {
                 // Ingest workflow triggered by s3 event::
                 event.guid = uuidv4();
 
-                // Identify file extention of s3 object::
+                // Identify file extension of s3 object::
                 let key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));
-                if (key.slice((key.lastIndexOf(".") - 1 >>> 0) + 2) === 'json') {
+                const fileExtension = key.slice((key.lastIndexOf(".") - 1 >>> 0) + 2).toLowerCase();
+                
+                // Define supported video file extensions
+                const videoExtensions = [
+                    'mp4', 'mpg', 'mpeg', 'm4v', 'mov', 'm2ts', 'mts', 'ts',
+                    'avi', 'mkv', 'wmv', 'flv', 'webm', '3gp', 'asf', 'vob'
+                ];
+                
+                if (fileExtension === 'json') {
                     event.workflowTrigger = 'Metadata';
-                } else {
+                } else if (videoExtensions.includes(fileExtension)) {
                     event.workflowTrigger = 'Video';
+                } else {
+                    throw new Error(`Unsupported file type: ${fileExtension}. Supported video formats: ${videoExtensions.join(', ')}`);
                 }
                 params = {
                     stateMachineArn: process.env.IngestWorkflow,
