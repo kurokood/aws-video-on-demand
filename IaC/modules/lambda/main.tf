@@ -205,7 +205,7 @@ resource "aws_iam_policy" "error_handler_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect = "Allow"
         Action = [
@@ -217,20 +217,21 @@ resource "aws_iam_policy" "error_handler_policy" {
       },
       {
         Effect   = "Allow"
+        Action   = "dynamodb:UpdateItem"
+        Resource = var.dynamodb_table.arn
+      }
+    ], var.sns_topic != null ? [
+      {
+        Effect   = "Allow"
         Action   = "sns:Publish"
-        Resource = var.sns_topic != null ? var.sns_topic.arn : ""
+        Resource = var.sns_topic.arn
         Condition = {
           Bool = {
             "aws:SecureTransport" = "true"
           }
         }
-      },
-      {
-        Effect   = "Allow"
-        Action   = "dynamodb:UpdateItem"
-        Resource = var.dynamodb_table.arn
       }
-    ]
+    ] : [])
   })
 }
 
@@ -935,7 +936,7 @@ resource "aws_iam_policy" "sns_notification_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect = "Allow"
         Action = [
@@ -947,20 +948,21 @@ resource "aws_iam_policy" "sns_notification_policy" {
       },
       {
         Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
+        Resource = aws_lambda_function.error_handler.arn
+      }
+    ], var.sns_topic != null ? [
+      {
+        Effect   = "Allow"
         Action   = "sns:Publish"
-        Resource = var.sns_topic != null ? var.sns_topic.arn : ""
+        Resource = var.sns_topic.arn
         Condition = {
           Bool = {
             "aws:SecureTransport" = "true"
           }
         }
-      },
-      {
-        Effect   = "Allow"
-        Action   = "lambda:InvokeFunction"
-        Resource = aws_lambda_function.error_handler.arn
       }
-    ]
+    ] : [])
   })
 }
 
