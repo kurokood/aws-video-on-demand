@@ -29,14 +29,34 @@ output "mediaconvert_templates" {
 
 # Template Names for different resolutions and types
 
-output "template_universal_qvbr" {
-  description = "Universal CMAF QVBR MediaConvert job template name (standard VOD)"
-  value       = "${var.stack_name}_Ott_universal_Avc_Aac_16x9_qvbr_no_preset"
+output "template_2160p_qvbr" {
+  description = "2160p QVBR MediaConvert job template name (standard VOD)"
+  value       = "${var.stack_name}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset"
 }
 
-output "template_universal_mvod" {
-  description = "Universal HLS MVOD MediaConvert job template name (MediaPackage VOD)"
-  value       = var.enable_media_package ? "${var.stack_name}_Ott_universal_Avc_Aac_16x9_mvod_no_preset" : ""
+output "template_1080p_qvbr" {
+  description = "1080p QVBR MediaConvert job template name (standard VOD)"
+  value       = "${var.stack_name}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset"
+}
+
+output "template_720p_qvbr" {
+  description = "720p QVBR MediaConvert job template name (standard VOD)"
+  value       = "${var.stack_name}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset"
+}
+
+output "template_2160p_mvod" {
+  description = "2160p MVOD MediaConvert job template name (MediaPackage VOD)"
+  value       = var.enable_media_package ? "${var.stack_name}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset" : ""
+}
+
+output "template_1080p_mvod" {
+  description = "1080p MVOD MediaConvert job template name (MediaPackage VOD)"
+  value       = var.enable_media_package ? "${var.stack_name}_Ott_1080p_Avc_Aac_16x9_mvod_no_preset" : ""
+}
+
+output "template_720p_mvod" {
+  description = "720p MVOD MediaConvert job template name (MediaPackage VOD)"
+  value       = var.enable_media_package ? "${var.stack_name}_Ott_720p_Avc_Aac_16x9_mvod_no_preset" : ""
 }
 
 # MediaPackage VOD Outputs (conditional)
@@ -87,7 +107,5 @@ output "template_names" {
     "2160p_mvod"       = var.enable_media_package ? "${var.stack_name}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset" : ""
     "1080p_mvod"       = var.enable_media_package ? "${var.stack_name}_Ott_1080p_Avc_Aac_16x9_mvod_no_preset" : ""
     "720p_mvod"        = var.enable_media_package ? "${var.stack_name}_Ott_720p_Avc_Aac_16x9_mvod_no_preset" : ""
-    "universal_qvbr"   = "${var.stack_name}_Ott_universal_Avc_Aac_16x9_qvbr_no_preset"
-    "universal_mvod"   = var.enable_media_package ? "${var.stack_name}_Ott_universal_Avc_Aac_16x9_mvod_no_preset" : ""
   }
 }

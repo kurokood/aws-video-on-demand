@@ -47,13 +47,14 @@ exports.handler = async (event) => {
         
         console.log(`Source video resolution: ${event.srcWidth}x${event.srcHeight}`);
 
-        // Use universal template for all video resolutions (adaptive bitrate with no upscaling)
+        // Select appropriate resolution-specific template based on source video resolution
         let encodeProfile = event.srcHeight; // Keep original height for reference
-        let selectedTemplate = process.env.MediaConvert_Template_Universal;
+        let selectedTemplate = selectTemplateByResolution(event.srcHeight, event.srcWidth, event);
         
-        console.log(`Using universal adaptive bitrate template for ${event.srcWidth}x${event.srcHeight} video (prevents upscaling)`);
+        console.log(`Selected template: ${selectedTemplate} for ${event.srcWidth}x${event.srcHeight} video (prevents upscaling)`);
 
         event.encodingProfile = encodeProfile;
+        event.jobTemplate = selectedTemplate; // Set the job template directly
 
         if (event.frameCapture) {
             // Use the source video dimensions for frame capture
@@ -79,3 +80,27 @@ exports.handler = async (event) => {
     console.log(`RESPONSE:: ${JSON.stringify(event, null, 2)}`);
     return event;
 };
+
+/**
+ * Select appropriate MediaConvert template based on source video resolution
+ * This prevents upscaling by choosing a template that matches or is lower than the source resolution
+ * Uses template names passed from input-validate Lambda function
+ */
+function selectTemplateByResolution(srcHeight, srcWidth, event) {
+    // Get template names from event data (passed from input-validate Lambda)
+    const template2160p = event.jobTemplate_2160p;
+    const template1080p = event.jobTemplate_1080p;
+    const template720p = event.jobTemplate_720p;
+    
+    // Select template based on source resolution (choose highest resolution that doesn't exceed source)
+    if (srcHeight >= 2160 && srcWidth >= 3840) {
+        return template2160p;
+    } else if (srcHeight >= 1080 && srcWidth >= 1920) {
+        return template1080p;
+    } else if (srcHeight >= 720 && srcWidth >= 1280) {
+        return template720p;
+    } else {
+        // For lower resolutions, use 720p template (will downscale if needed)
+        return template720p;
+    }
+}

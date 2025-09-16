@@ -178,12 +178,8 @@ Resources:
         Variables:
           SOLUTION_IDENTIFIER: AwsSolution/SO0021/v6.1.13
       Code:
-        ZipFile: |
-          // Custom Resource Lambda - deployed via Terraform
-          exports.handler = async (event, context) => {
-            console.log('Custom Resource Lambda placeholder');
-            return { Status: 'SUCCESS' };
-          };
+        S3Bucket: vod-lambda-code-cb36a6d6
+        S3Key: custom-resource.zip
       Tags:
         - Key: SolutionId
           Value: SO0021
@@ -207,6 +203,7 @@ Resources:
       EndPoint: !GetAtt MediaConvertEndPoint.EndpointUrl
       EnableMediaPackage: !If [EnableMediaPackageCondition, 'true', 'false']
       EnableNewTemplates: true
+      TemplateVersion: "3.0"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
     DependsOn: MediaConvertEndPoint

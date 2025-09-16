@@ -84,7 +84,8 @@ module "lambda" {
   cloudfront_domain               = module.cloudfront.domain_name
   frame_capture                   = local.frame_capture
   glacier                         = var.glacier
-  mediaconvert_template_universal = local.enable_media_package ? module.custom_resources.template_universal_mvod : module.custom_resources.template_universal_qvbr
+  # Individual resolution-specific templates are now selected dynamically by the profiler Lambda
+  # No need to pass template names as they are selected based on source video resolution
   enable_media_package            = local.enable_media_package
   enable_sns                      = local.enable_sns
   enable_sqs                      = local.enable_sqs

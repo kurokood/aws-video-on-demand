@@ -67,10 +67,8 @@ variable "glacier" {
 }
 
 
-variable "mediaconvert_template_universal" {
-  description = "Universal MediaConvert template for iOS and Android compatible output (CMAF for QVBR, HLS for MVOD)"
-  type        = string
-}
+# Individual resolution-specific templates are now selected dynamically by the profiler Lambda
+# No need for template variables as they are selected based on source video resolution
 
 variable "enable_media_package" {
   description = "Enable MediaPackage"

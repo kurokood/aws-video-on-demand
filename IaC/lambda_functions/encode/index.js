@@ -85,27 +85,78 @@ exports.handler = async (event) => {
 		let templateNameTried = event.jobTemplate;
 		let tmpl;
 		console.log(`TEMPLATE_NAME_TRY:: ${templateNameTried}`);
+		
+		// Try to get the template, with fallback logic for fixed templates
 		try {
 			tmpl = await mediaconvert.getJobTemplate({ Name: templateNameTried });
 		} catch (e1) {
 			if (e1 && e1.name === 'NotFoundException' && typeof templateNameTried === 'string') {
 				let altName = templateNameTried;
-				if (templateNameTried.includes('_mvod_')) {
-					altName = templateNameTried.replace('_mvod_', '_qvbr_');
-				} else if (templateNameTried.includes('_qvbr_')) {
-					altName = templateNameTried.replace('_qvbr_', '_mvod_');
-				}
-				if (altName !== templateNameTried) {
-					console.log(`TEMPLATE_NAME_ALT_TRY:: ${altName}`);
+				
+				// First try: if using original template, try the fixed version
+				if (!templateNameTried.includes('_fixed')) {
+					altName = templateNameTried + '_fixed';
+					console.log(`TEMPLATE_NAME_FIXED_TRY:: ${altName}`);
 					try {
 						tmpl = await mediaconvert.getJobTemplate({ Name: altName });
 						job.JobTemplate = altName;
 					} catch (e2) {
-						console.error('Alternate JobTemplate also not found.', e2);
-						throw e1; // throw original not found
+						console.log('Fixed template not found, trying alternate type...');
+						
+						// Second try: alternate between MVOD and QVBR
+						if (templateNameTried.includes('_mvod_')) {
+							altName = templateNameTried.replace('_mvod_', '_qvbr_');
+						} else if (templateNameTried.includes('_qvbr_')) {
+							altName = templateNameTried.replace('_qvbr_', '_mvod_');
+						}
+						
+						if (altName !== templateNameTried) {
+							console.log(`TEMPLATE_NAME_ALT_TRY:: ${altName}`);
+							try {
+								tmpl = await mediaconvert.getJobTemplate({ Name: altName });
+								job.JobTemplate = altName;
+							} catch (e3) {
+								console.log('Alternate template not found, trying fixed alternate...');
+								
+								// Third try: fixed version of alternate template
+								if (!altName.includes('_fixed')) {
+									altName = altName + '_fixed';
+									console.log(`TEMPLATE_NAME_FIXED_ALT_TRY:: ${altName}`);
+									try {
+										tmpl = await mediaconvert.getJobTemplate({ Name: altName });
+										job.JobTemplate = altName;
+									} catch (e4) {
+										console.error('All template variations not found.', e4);
+										throw e1; // throw original not found
+									}
+								} else {
+									throw e3;
+								}
+							}
+						} else {
+							throw e2;
+						}
 					}
 				} else {
-					throw e1;
+					// If already using fixed template, try alternate type
+					if (templateNameTried.includes('_mvod_')) {
+						altName = templateNameTried.replace('_mvod_', '_qvbr_');
+					} else if (templateNameTried.includes('_qvbr_')) {
+						altName = templateNameTried.replace('_qvbr_', '_mvod_');
+					}
+					
+					if (altName !== templateNameTried) {
+						console.log(`TEMPLATE_NAME_ALT_TRY:: ${altName}`);
+						try {
+							tmpl = await mediaconvert.getJobTemplate({ Name: altName });
+							job.JobTemplate = altName;
+						} catch (e2) {
+							console.error('Alternate JobTemplate also not found.', e2);
+							throw e1; // throw original not found
+						}
+					} else {
+						throw e1;
+					}
 				}
 			} else {
 				throw e1;

@@ -95,11 +95,12 @@ resource "aws_cloudformation_stack" "vod_custom_resources" {
     DestinationBucketArn     = var.destination_bucket_arn
     CloudFrontDistributionId = var.cloudfront_distribution_id
     EnableNewTemplates       = "Yes"
+    TemplateVersion          = "3.0"
     LambdaCodeBucket         = local.lambda_bucket_name
     LambdaCodeKey           = aws_s3_object.custom_resource_code.key
   }
 
-  template_body = file("${path.module}/../../templates/vod-custom-resources.yaml")
+  template_body = file("${path.module}/../../templates/vod-custom-resources-updated.yaml")
 
   capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
 

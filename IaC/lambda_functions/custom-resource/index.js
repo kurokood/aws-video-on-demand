@@ -106,7 +106,7 @@ async function getMediaConvertEndpoint() {
 async function handleMediaConvertTemplates(properties, responseData) {
     const stackName = properties.StackName;
     const enableMediaPackage = properties.EnableMediaPackage === 'true';
-    const enableNewTemplates = properties.EnableNewTemplates === 'Yes';
+    const enableNewTemplates = properties.EnableNewTemplates === 'Yes' || properties.EnableNewTemplates === true;
     const endpoint = properties.EndPoint;
     
     console.log(`MediaConvert Template Creation - Stack: ${stackName}, EnableMediaPackage: ${properties.EnableMediaPackage} (${enableMediaPackage}), EnableNewTemplates: ${properties.EnableNewTemplates} (${enableNewTemplates}), Endpoint: ${endpoint}`);
@@ -114,24 +114,50 @@ async function handleMediaConvertTemplates(properties, responseData) {
     // Set custom endpoint for MediaConvert
     mediaconvert.endpoint = endpoint;
     
-    // Define template configurations - only universal templates with adaptive bitrate
+    // Define template configurations - individual resolution-specific templates
     const templateConfigs = [
         {
-            name: `${stackName}_Ott_universal_Avc_Aac_16x9_qvbr_no_preset`,
-            description: 'Universal CMAF adaptive bitrate template for iOS and Android devices (standard VOD)',
-            resolution: 'universal',
-            type: 'universal_qvbr'
+            name: `${stackName}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset`,
+            description: '2160p QVBR template for standard VOD',
+            resolution: '2160p',
+            type: 'qvbr'
+        },
+        {
+            name: `${stackName}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset`,
+            description: '1080p QVBR template for standard VOD',
+            resolution: '1080p',
+            type: 'qvbr'
+        },
+        {
+            name: `${stackName}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset`,
+            description: '720p QVBR template for standard VOD',
+            resolution: '720p',
+            type: 'qvbr'
         }
     ];
     
-    // Add MVOD universal template if MediaPackage is enabled
+    // Add MVOD templates if MediaPackage is enabled
     if (enableMediaPackage) {
-        templateConfigs.push({
-            name: `${stackName}_Ott_universal_Avc_Aac_16x9_mvod_no_preset`,
-            description: 'Universal HLS MVOD template for MediaPackage VOD',
-            resolution: 'universal',
-            type: 'universal_mvod'
-        });
+        templateConfigs.push(
+            {
+                name: `${stackName}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset`,
+                description: '2160p MVOD template for MediaPackage VOD',
+                resolution: '2160p',
+                type: 'mvod'
+            },
+            {
+                name: `${stackName}_Ott_1080p_Avc_Aac_16x9_mvod_no_preset`,
+                description: '1080p MVOD template for MediaPackage VOD',
+                resolution: '1080p',
+                type: 'mvod'
+            },
+            {
+                name: `${stackName}_Ott_720p_Avc_Aac_16x9_mvod_no_preset`,
+                description: '720p MVOD template for MediaPackage VOD',
+                resolution: '720p',
+                type: 'mvod'
+            }
+        );
     }
     
     const createdTemplates = [];
@@ -192,12 +218,8 @@ function generateJobTemplate(config, stackName) {
         }
     };
     
-    // Generate output groups based on template type
-    if (config.resolution === 'universal') {
-        baseTemplate.Settings.OutputGroups.push(generateUniversalOutputGroup(config.type === 'universal_mvod'));
-    } else {
-        baseTemplate.Settings.OutputGroups.push(generateStandardOutputGroup(config.resolution, config.type === 'mvod'));
-    }
+    // Generate output groups based on template type - all templates are now individual resolution-specific
+    baseTemplate.Settings.OutputGroups.push(generateStandardOutputGroup(config.resolution, config.type === 'mvod'));
     
     return baseTemplate;
 }
@@ -269,19 +291,46 @@ function generateUniversalOutputGroup(isMVOD) {
 
 /**
  * Generate standard output group for individual resolution templates
+ * Creates ABR ladder starting from source resolution and going down to lower resolutions
+ * HLS for MVOD (MediaPackage) or CMAF for QVBR
  */
 function generateStandardOutputGroup(resolution, isMVOD) {
-    const resolutionSettings = {
-        '2160p': { width: 3840, height: 2160, bitrate: 15000000, quality: 9 },
-        '1080p': { width: 1920, height: 1080, bitrate: 8500000, quality: 8 },
-        '720p': { width: 1280, height: 720, bitrate: 6000000, quality: 8 }
+    // Define ABR ladders for each source resolution (no upscaling)
+    const abrLadders = {
+        '2160p': [
+            { height: 2160, width: 3840, bitrate: 15000000, quality: 9, name: "2160p" },
+            { height: 1080, width: 1920, bitrate: 8500000, quality: 8, name: "1080p" },
+            { height: 720, width: 1280, bitrate: 6000000, quality: 8, name: "720p" },
+            { height: 480, width: 854, bitrate: 3000000, quality: 7, name: "480p" },
+            { height: 360, width: 640, bitrate: 1500000, quality: 7, name: "360p" }
+        ],
+        '1080p': [
+            { height: 1080, width: 1920, bitrate: 8500000, quality: 8, name: "1080p" },
+            { height: 720, width: 1280, bitrate: 6000000, quality: 8, name: "720p" },
+            { height: 480, width: 854, bitrate: 3000000, quality: 7, name: "480p" },
+            { height: 360, width: 640, bitrate: 1500000, quality: 7, name: "360p" }
+        ],
+        '720p': [
+            { height: 720, width: 1280, bitrate: 6000000, quality: 8, name: "720p" },
+            { height: 480, width: 854, bitrate: 3000000, quality: 7, name: "480p" },
+            { height: 360, width: 640, bitrate: 1500000, quality: 7, name: "360p" }
+        ]
     };
     
-    const settings = resolutionSettings[resolution];
+    const ladder = abrLadders[resolution];
+    if (!ladder) {
+        throw new Error(`Unsupported resolution: ${resolution}`);
+    }
+    
     const outputType = isMVOD ? "HLS_GROUP_SETTINGS" : "DASH_ISO_GROUP_SETTINGS";
     
+    // Generate video outputs for each rendition in the ladder
+    const videoOutputs = ladder.map(tier => 
+        generateVideoOutput(tier.name, tier.width, tier.height, tier.bitrate, tier.quality, `_${tier.name}_video`, !isMVOD, isMVOD)
+    );
+    
     return {
-        Name: `${resolution} Output Group`,
+        Name: `${resolution} ABR Output Group`,
         OutputGroupSettings: {
             Type: outputType,
             [isMVOD ? "HlsGroupSettings" : "DashIsoGroupSettings"]: isMVOD ? {
@@ -298,8 +347,8 @@ function generateStandardOutputGroup(resolution, isMVOD) {
             }
         },
         Outputs: [
-            generateVideoOutput(resolution, settings.width, settings.height, settings.bitrate, settings.quality, `_${resolution}_video`, !isMVOD),
-            generateAudioOutput(!isMVOD)
+            ...videoOutputs,
+            generateAudioOutput(!isMVOD, isMVOD)
         ]
     };
 }
@@ -311,7 +360,9 @@ function generateVideoOutputWithScaling(resolution, width, height, bitrate, qual
     return {
         NameModifier: nameModifier,
         VideoDescription: {
-            ScalingBehavior: "DEFAULT", // MediaConvert will automatically skip upscaling
+            Width: width,
+            Height: height,
+            ScalingBehavior: "DEFAULT", // MediaConvert will respect width/height constraints to prevent upscaling
             TimecodeInsertion: "DISABLED",
             AntiAlias: "ENABLED",
             Sharpness: 50,
@@ -360,10 +411,7 @@ function generateVideoOutputWithScaling(resolution, width, height, bitrate, qual
             RespondToAfd: "NONE",
             ColorMetadata: "INSERT"
         },
-        ContainerSettings: useCMFC ? {
-            Container: "CMFC",
-            CmfcSettings: {}
-        } : {
+        ContainerSettings: isMVOD ? {
             Container: "M3U8",
             M3u8Settings: {
                 AudioFramesPerPes: 4,
@@ -377,6 +425,9 @@ function generateVideoOutputWithScaling(resolution, width, height, bitrate, qual
                 VideoPid: 481,
                 AudioPids: [482]
             }
+        } : {
+            Container: "CMFC",
+            CmfcSettings: {}
         }
     };
 }
@@ -384,7 +435,7 @@ function generateVideoOutputWithScaling(resolution, width, height, bitrate, qual
 /**
  * Generate video output configuration
  */
-function generateVideoOutput(resolution, width, height, bitrate, quality, nameModifier, useCMFC = false) {
+function generateVideoOutput(resolution, width, height, bitrate, quality, nameModifier, useCMFC = false, isMVOD = false) {
     return {
         NameModifier: nameModifier,
         VideoDescription: {
@@ -439,10 +490,7 @@ function generateVideoOutput(resolution, width, height, bitrate, quality, nameMo
             RespondToAfd: "NONE",
             ColorMetadata: "INSERT"
         },
-        ContainerSettings: useCMFC ? {
-            Container: "CMFC",
-            CmfcSettings: {}
-        } : {
+        ContainerSettings: isMVOD ? {
             Container: "M3U8",
             M3u8Settings: {
                 AudioFramesPerPes: 4,
@@ -456,6 +504,9 @@ function generateVideoOutput(resolution, width, height, bitrate, quality, nameMo
                 VideoPid: 481,
                 AudioPids: [482]
             }
+        } : {
+            Container: "CMFC",
+            CmfcSettings: {}
         }
     };
 }
@@ -463,7 +514,7 @@ function generateVideoOutput(resolution, width, height, bitrate, quality, nameMo
 /**
  * Generate audio output configuration
  */
-function generateAudioOutput(useCMFC = false) {
+function generateAudioOutput(useCMFC = false, isMVOD = false) {
     return {
         NameModifier: "_audio",
         AudioDescriptions: [{
@@ -485,10 +536,7 @@ function generateAudioOutput(useCMFC = false) {
             LanguageCodeControl: "FOLLOW_INPUT",
             AudioType: 0
         }],
-        ContainerSettings: useCMFC ? {
-            Container: "CMFC",
-            CmfcSettings: {}
-        } : {
+        ContainerSettings: isMVOD ? {
             Container: "M3U8",
             M3u8Settings: {
                 AudioFramesPerPes: 4,
@@ -500,6 +548,9 @@ function generateAudioOutput(useCMFC = false) {
                 VideoPid: 481,
                 AudioPids: [482]
             }
+        } : {
+            Container: "CMFC",
+            CmfcSettings: {}
         }
     };
 }

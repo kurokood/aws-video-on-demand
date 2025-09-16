@@ -155,7 +155,7 @@ resource "aws_sfn_state_machine" "process_workflow" {
       "Profiler" = {
         Type     = "Task"
         Resource = var.lambda_functions.profiler.arn
-        Next     = "Encoding Profile Check"
+        Next     = "Accelerated Transcoding Check"
         Retry = [
           {
             ErrorEquals     = ["Lambda.ClientExecutionTimeoutException", "Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
@@ -164,47 +164,6 @@ resource "aws_sfn_state_machine" "process_workflow" {
             BackoffRate     = 2
           }
         ]
-      }
-      "Encoding Profile Check" = {
-        Type = "Choice"
-        Choices = [
-          {
-            Variable      = "$.isCustomTemplate"
-            BooleanEquals = true
-            Next          = "Custom jobTemplate"
-          },
-          {
-            Variable     = "$.encodingProfile"
-            NumericEquals = 2160
-            Next         = "jobTemplate 2160p"
-          },
-          {
-            Variable     = "$.encodingProfile"
-            NumericEquals = 1080
-            Next         = "jobTemplate 1080p"
-          },
-          {
-            Variable     = "$.encodingProfile"
-            NumericEquals = 720
-            Next         = "jobTemplate 720p"
-          }
-        ]
-      }
-      "Custom jobTemplate" = {
-        Type = "Pass"
-        Next = "Accelerated Transcoding Check"
-      }
-      "jobTemplate 2160p" = {
-        Type = "Pass"
-        Next = "Accelerated Transcoding Check"
-      }
-      "jobTemplate 1080p" = {
-        Type = "Pass"
-        Next = "Accelerated Transcoding Check"
-      }
-      "jobTemplate 720p" = {
-        Type = "Pass"
-        Next = "Accelerated Transcoding Check"
       }
       "Accelerated Transcoding Check" = {
         Type = "Choice"

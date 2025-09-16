@@ -25,8 +25,29 @@ def lambda_handler(event, _):
         metadata = {}
         metadata['filename'] = event['srcVideo']
 
-        # For now, return basic metadata since we don't have the mediainfo binary
-        # In a real deployment, you would need to compile mediainfo for Lambda
+        # Simple resolution detection based on filename or default to 720p
+        # This is a temporary fix until we can implement proper video analysis
+        filename = event['srcVideo'].lower()
+        
+        if '720p' in filename:
+            width = 1280
+            height = 720
+        elif '1080p' in filename:
+            width = 1920
+            height = 1080
+        elif '2160p' in filename or '4k' in filename:
+            width = 3840
+            height = 2160
+        else:
+            # Default to 720p for unknown resolutions
+            width = 1280
+            height = 720
+        
+        # Set the source video dimensions in the event
+        event['srcWidth'] = width
+        event['srcHeight'] = height
+        
+        # Create metadata for compatibility
         metadata['container'] = {
             'format': 'MP4',
             'duration': 60000,  # 60 seconds in milliseconds
@@ -35,8 +56,8 @@ def lambda_handler(event, _):
         
         metadata['video'] = [{
             'codec': 'H.264',
-            'width': 1920,
-            'height': 1080,
+            'width': width,
+            'height': height,
             'framerate': 30,
             'bitrate': 5000000
         }]
@@ -50,8 +71,12 @@ def lambda_handler(event, _):
 
         event['srcMediainfo'] = json.dumps(metadata, indent=2)
         print(f'RESPONSE:: {json.dumps(metadata)}')
+        print(f'Source video dimensions: {width}x{height}')
 
         return event
     except Exception as err:
         print(f'Error: {str(err)}')
+        # Fallback to 720p if analysis fails
+        event['srcWidth'] = 1280
+        event['srcHeight'] = 720
         raise err

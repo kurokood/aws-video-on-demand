@@ -343,6 +343,10 @@ resource "aws_lambda_function" "input_validate" {
       EnableSns                           = var.enable_sns ? "true" : "false"
       EnableSqs                           = var.enable_sqs ? "true" : "false"
       AcceleratedTranscoding              = var.accelerated_transcoding
+      # Individual resolution-specific MediaConvert templates
+      MediaConvert_Template_2160p         = var.enable_media_package ? "${var.stack_name}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset" : "${var.stack_name}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset"
+      MediaConvert_Template_1080p         = var.enable_media_package ? "${var.stack_name}_Ott_1080p_Avc_Aac_16x9_mvod_no_preset" : "${var.stack_name}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset"
+      MediaConvert_Template_720p          = var.enable_media_package ? "${var.stack_name}_Ott_720p_Avc_Aac_16x9_mvod_no_preset" : "${var.stack_name}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset"
     }
   }
 
@@ -651,11 +655,8 @@ resource "aws_lambda_function" "profiler" {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
       ErrorHandler                        = aws_lambda_function.error_handler.arn
       DynamoDBTable                       = var.dynamodb_table.name
-      MediaConvert_Template_Universal     = var.mediaconvert_template_universal
-      # Legacy template variables for backward compatibility
-      MediaConvert_Template_2160p         = var.mediaconvert_template_universal
-      MediaConvert_Template_1080p         = var.mediaconvert_template_universal
-      MediaConvert_Template_720p          = var.mediaconvert_template_universal
+      StackName                           = var.stack_name
+      EnableMediaPackage                  = var.enable_media_package ? "true" : "false"
     }
   }
 

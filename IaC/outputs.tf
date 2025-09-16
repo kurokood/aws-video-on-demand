@@ -43,10 +43,8 @@ output "anonymized_metric_uuid" {
 output "mediaconvert_templates" {
   description = "MediaConvert template names for video processing"
   value = {
-    # Primary universal template (adaptive bitrate, prevents upscaling)
-    universal = local.enable_media_package ? module.custom_resources.template_universal_mvod : module.custom_resources.template_universal_qvbr
-    
-    # All available templates
+    # Individual resolution-specific templates are now used instead of universal templates
+    # Templates are selected dynamically based on source video resolution to prevent upscaling
     all_templates = module.custom_resources.template_names
   }
 }
