@@ -17,6 +17,12 @@ terraform {
       version = "~> 3.2"
     }
   }
+    backend "s3" {
+    bucket         = "tf-state-store-121485"
+    key            = "vod/terraform.tfstate"
+    region         = "us-east-1"
+    use_lockfile   = true
+  }
 }
 
 provider "aws" {
