@@ -85,6 +85,16 @@ Parameters:
     Description: CloudFront distribution ID
     Default: ''
 
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda code
+    Default: ''
+
+  LambdaCodeKey:
+    Type: String
+    Description: S3 key for Lambda code
+    Default: 'custom-resource.zip'
+
 Conditions:
   EnableMediaPackageCondition:
     !Equals [!Ref EnableMediaPackage, 'Yes']
@@ -178,8 +188,8 @@ Resources:
         Variables:
           SOLUTION_IDENTIFIER: AwsSolution/SO0021/v6.1.13
       Code:
-        S3Bucket: vod-lambda-code-cb36a6d6
-        S3Key: custom-resource.zip
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
       Tags:
         - Key: SolutionId
           Value: SO0021

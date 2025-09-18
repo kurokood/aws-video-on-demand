@@ -94,8 +94,6 @@ resource "aws_cloudformation_stack" "vod_custom_resources" {
     SourceBucketArn          = var.source_bucket_arn
     DestinationBucketArn     = var.destination_bucket_arn
     CloudFrontDistributionId = var.cloudfront_distribution_id
-    EnableNewTemplates       = "Yes"
-    TemplateVersion          = "3.0"
     LambdaCodeBucket         = local.lambda_bucket_name
     LambdaCodeKey           = aws_s3_object.custom_resource_code.key
   }
