@@ -124,7 +124,7 @@ resource "aws_iam_policy" "media_package_assets_policy" {
       {
         Effect = "Allow"
         Action = "iam:PassRole"
-        Resource = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.stack_name}-mediapackage-vod-role"
+        Resource = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.stack_name}-mediapackage-vod-service-role"
       },
       {
         Effect = "Allow"
@@ -168,7 +168,7 @@ resource "aws_lambda_function" "media_package_assets" {
       ErrorHandler                        = aws_lambda_function.error_handler.arn
       GroupId                             = var.mediapackage_group_id
       GroupDomainName                     = var.mediapackage_domain_name
-      MediaPackageVodRole                 = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.stack_name}-mediapackage-vod-role"
+      MediaPackageVodRole                 = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.stack_name}-mediapackage-vod-service-role"
     }
   }
 

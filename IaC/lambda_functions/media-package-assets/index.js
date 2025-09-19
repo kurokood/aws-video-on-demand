@@ -56,10 +56,31 @@ const handler = async (event) => {
     const randomId = crypto.randomBytes(16).toString('hex').toLowerCase();
 
     try {
+        // Check if we have the required data for MediaPackage asset creation
+        if (!event.hlsPlaylist && !event.srcVideo && !event.destBucket) {
+            console.log('No HLS playlist or video source found, skipping MediaPackage asset creation');
+            return event;
+        }
+
+        // Determine the source ARN - prefer hlsPlaylist, fallback to video source
+        let sourceArn;
+        if (event.hlsPlaylist) {
+            sourceArn = buildArnFromUri(event.hlsPlaylist);
+        } else if (event.srcVideo && event.destBucket) {
+            // For MVOD templates, we need to create the HLS playlist path
+            const filename = event.srcVideo.split('/').pop().split('.').slice(0, -1).join('.');
+            const sanitizedFilename = filename.replace(/[^a-zA-Z0-9_-]/g, '_');
+            // The main playlist is named after the sanitized filename, not index.m3u8
+            const hlsPlaylistPath = `s3://${event.destBucket}/vod/${sanitizedFilename}/hls/cmaf/${sanitizedFilename}.m3u8`;
+            sourceArn = buildArnFromUri(hlsPlaylistPath);
+        } else {
+            throw new Error('No valid source found for MediaPackage asset creation');
+        }
+
         const params = {
             Id: randomId,
             PackagingGroupId: process.env.GroupId,
-            SourceArn: buildArnFromUri(event.hlsPlaylist),
+            SourceArn: sourceArn,
             SourceRoleArn: process.env.MediaPackageVodRole,
             ResourceId: randomId
         };
