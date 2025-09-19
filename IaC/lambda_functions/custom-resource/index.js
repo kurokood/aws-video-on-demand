@@ -125,31 +125,12 @@ async function handleMediaConvertTemplates(properties, responseData) {
     // Set custom endpoint for MediaConvert
     mediaconvert.endpoint = endpoint;
     
-    // Define template configurations - individual resolution-specific templates
-    const templateConfigs = [
-        {
-            name: `${stackName}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset`,
-            description: '2160p QVBR template for standard VOD',
-            resolution: '2160p',
-            type: 'qvbr'
-        },
-        {
-            name: `${stackName}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset`,
-            description: '1080p QVBR template for standard VOD',
-            resolution: '1080p',
-            type: 'qvbr'
-        },
-        {
-            name: `${stackName}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset`,
-            description: '720p QVBR template for standard VOD',
-            resolution: '720p',
-            type: 'qvbr'
-        }
-    ];
+    // Define template configurations based on MediaPackage setting
+    let templateConfigs;
     
-    // Add MVOD templates if MediaPackage is enabled
     if (enableMediaPackage) {
-        templateConfigs.push(
+        // When MediaPackage is enabled, create only MVOD templates
+        templateConfigs = [
             {
                 name: `${stackName}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset`,
                 description: '2160p MVOD template for MediaPackage VOD',
@@ -168,7 +149,29 @@ async function handleMediaConvertTemplates(properties, responseData) {
                 resolution: '720p',
                 type: 'mvod'
             }
-        );
+        ];
+    } else {
+        // When MediaPackage is disabled, create only QVBR templates
+        templateConfigs = [
+            {
+                name: `${stackName}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset`,
+                description: '2160p QVBR template for standard VOD',
+                resolution: '2160p',
+                type: 'qvbr'
+            },
+            {
+                name: `${stackName}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset`,
+                description: '1080p QVBR template for standard VOD',
+                resolution: '1080p',
+                type: 'qvbr'
+            },
+            {
+                name: `${stackName}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset`,
+                description: '720p QVBR template for standard VOD',
+                resolution: '720p',
+                type: 'qvbr'
+            }
+        ];
     }
     
     const createdTemplates = [];
@@ -268,35 +271,56 @@ function generateStandardOutputGroup(resolution, isMVOD) {
         throw new Error(`Unsupported resolution: ${resolution}`);
     }
     
-    const outputType = isMVOD ? "HLS_GROUP_SETTINGS" : "DASH_ISO_GROUP_SETTINGS";
-    
-    // Generate video outputs for each rendition in the ladder
-    const videoOutputs = ladder.map(tier => 
-        generateVideoOutput(tier.name, tier.width, tier.height, tier.bitrate, tier.quality, `_${tier.name}_video`, !isMVOD, isMVOD)
-    );
-    
-    return {
-        Name: `${resolution} ABR Output Group`,
-        OutputGroupSettings: {
-            Type: outputType,
-            [isMVOD ? "HlsGroupSettings" : "DashIsoGroupSettings"]: isMVOD ? {
-                Destination: `s3://DESTINATION_BUCKET/${resolution.toLowerCase()}/`,
-                SegmentLength: 6,
-                MinSegmentLength: 0,
-                DirectoryStructure: "SINGLE_DIRECTORY",
-                ManifestDurationFormat: "INTEGER",
-                StreamInfResolution: "INCLUDE"
-            } : {
-                Destination: `s3://DESTINATION_BUCKET/${resolution.toLowerCase()}/`,
-                SegmentLength: 6,
-                FragmentLength: 6
-            }
-        },
-        Outputs: [
-            ...videoOutputs,
-            generateAudioOutput(!isMVOD, isMVOD)
-        ]
-    };
+    // For CMAF, we need both HLS and DASH manifests with CMAF segments
+    if (isMVOD) {
+        // MediaPackage VOD - use HLS with CMAF segments
+        return {
+            Name: `${resolution} HLS CMAF Output Group`,
+            OutputGroupSettings: {
+                Type: "CMAF_GROUP_SETTINGS",
+                CmafGroupSettings: {
+                    Destination: `s3://DESTINATION_BUCKET/${resolution.toLowerCase()}/hls/cmaf/`,
+                    SegmentLength: 6,
+                    FragmentLength: 6,
+                    SegmentControl: "SEGMENTED_FILES",
+                    WriteDashManifest: "DISABLED",
+                    WriteHlsManifest: "ENABLED",
+                    StreamInfResolution: "INCLUDE",
+                    WriteSegmentTimelineInRepresentation: "ENABLED"
+                }
+            },
+            Outputs: [
+                ...ladder.map(tier => 
+                    generateVideoOutput(tier.name, tier.width, tier.height, tier.bitrate, tier.quality, `_${tier.name}_video`, true, true)
+                ),
+                generateAudioOutput(true, true)
+            ]
+        };
+    } else {
+        // Standard VOD - use both HLS and DASH manifests with CMAF segments
+        return {
+            Name: `${resolution} CMAF Output Group`,
+            OutputGroupSettings: {
+                Type: "CMAF_GROUP_SETTINGS",
+                CmafGroupSettings: {
+                    Destination: `s3://DESTINATION_BUCKET/${resolution.toLowerCase()}/cmaf/`,
+                    SegmentLength: 6,
+                    FragmentLength: 6,
+                    SegmentControl: "SEGMENTED_FILES",
+                    WriteDashManifest: "ENABLED",
+                    WriteHlsManifest: "ENABLED",
+                    StreamInfResolution: "INCLUDE",
+                    WriteSegmentTimelineInRepresentation: "ENABLED"
+                }
+            },
+            Outputs: [
+                ...ladder.map(tier => 
+                    generateVideoOutput(tier.name, tier.width, tier.height, tier.bitrate, tier.quality, `_${tier.name}_video`, true, false)
+                ),
+                generateAudioOutput(true, false)
+            ]
+        };
+    }
 }
 
 
@@ -358,21 +382,7 @@ function generateVideoOutput(resolution, width, height, bitrate, quality, nameMo
             RespondToAfd: "NONE",
             ColorMetadata: "INSERT"
         },
-        ContainerSettings: isMVOD ? {
-            Container: "M3U8",
-            M3u8Settings: {
-                AudioFramesPerPes: 4,
-                PcrControl: "PCR_EVERY_PES_PACKET",
-                PmtPid: 480,
-                ProgramNumber: 1,
-                PatInterval: 0,
-                PmtInterval: 0,
-                NielsenId3: "NONE",
-                TimedMetadata: "NONE",
-                VideoPid: 481,
-                AudioPids: [482]
-            }
-        } : {
+        ContainerSettings: {
             Container: "CMFC",
             CmfcSettings: {}
         }
@@ -404,19 +414,7 @@ function generateAudioOutput(useCMFC = false, isMVOD = false) {
             LanguageCodeControl: "FOLLOW_INPUT",
             AudioType: 0
         }],
-        ContainerSettings: isMVOD ? {
-            Container: "M3U8",
-            M3u8Settings: {
-                AudioFramesPerPes: 4,
-                PcrControl: "PCR_EVERY_PES_PACKET",
-                PmtPid: 480,
-                ProgramNumber: 1,
-                PatInterval: 0,
-                PmtInterval: 0,
-                VideoPid: 481,
-                AudioPids: [482]
-            }
-        } : {
+        ContainerSettings: {
             Container: "CMFC",
             CmfcSettings: {}
         }
@@ -626,20 +624,29 @@ async function updateCloudFrontDistribution(distributionId, mediaPackageDomain) 
 async function deleteMediaConvertTemplates(properties) {
     const stackName = properties.StackName;
     const endpoint = properties.EndPoint;
+    const enableMediaPackage = properties.EnableMediaPackage === 'true';
     
     // Set custom endpoint for MediaConvert
     mediaconvert.endpoint = endpoint;
     
-    const templateNames = [
-        `${stackName}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset`,
-        `${stackName}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset`,
-        `${stackName}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset`,
-        `${stackName}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset`,
-        `${stackName}_Ott_1080p_Avc_Aac_16x9_mvod_no_preset`,
-        `${stackName}_Ott_720p_Avc_Aac_16x9_mvod_no_preset`,
-        `${stackName}_Ott_universal_Avc_Aac_16x9_qvbr_no_preset`,
-        `${stackName}_Ott_universal_Avc_Aac_16x9_mvod_no_preset`
-    ];
+    // Define template names based on MediaPackage setting
+    let templateNames;
+    
+    if (enableMediaPackage) {
+        // When MediaPackage is enabled, delete only MVOD templates
+        templateNames = [
+            `${stackName}_Ott_2160p_Avc_Aac_16x9_mvod_no_preset`,
+            `${stackName}_Ott_1080p_Avc_Aac_16x9_mvod_no_preset`,
+            `${stackName}_Ott_720p_Avc_Aac_16x9_mvod_no_preset`
+        ];
+    } else {
+        // When MediaPackage is disabled, delete only QVBR templates
+        templateNames = [
+            `${stackName}_Ott_2160p_Avc_Aac_16x9_qvbr_no_preset`,
+            `${stackName}_Ott_1080p_Avc_Aac_16x9_qvbr_no_preset`,
+            `${stackName}_Ott_720p_Avc_Aac_16x9_qvbr_no_preset`
+        ];
+    }
     
     for (const templateName of templateNames) {
         try {

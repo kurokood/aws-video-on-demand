@@ -183,7 +183,13 @@ exports.handler = async (event) => {
 					outputGroup.OutputGroupSettings.MsSmoothGroupSettings.Destination = `${outputPath}/mss/`;
 					break;
 				case 'CMAF_GROUP_SETTINGS':
-					outputGroup.OutputGroupSettings.CmafGroupSettings.Destination = `${outputPath}/cmaf/`;
+					// For CMAF, check if it's HLS or DASH manifest based on destination
+					const currentDest = outputGroup.OutputGroupSettings.CmafGroupSettings.Destination;
+					if (currentDest.includes('/hls/cmaf/')) {
+						outputGroup.OutputGroupSettings.CmafGroupSettings.Destination = `${outputPath}/hls/cmaf/`;
+					} else {
+						outputGroup.OutputGroupSettings.CmafGroupSettings.Destination = `${outputPath}/cmaf/`;
+					}
 					break;
 			}
 			
