@@ -11,12 +11,9 @@
 #  and limitations under the License.                                                                                #
 ######################################################################################################################
 
-import boto3
 import json
-import os
-from botocore.config import Config
 
-# Unused parsing functions removed as they're not needed for the current implementation
+# Simple resolution detection based on filename - no external dependencies needed
 
 def lambda_handler(event, _):
     print(f'REQUEST:: {json.dumps(event)}')

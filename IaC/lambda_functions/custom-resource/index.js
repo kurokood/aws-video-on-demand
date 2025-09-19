@@ -1,4 +1,7 @@
-const aws = require('aws-sdk');
+const { MediaConvert } = require('@aws-sdk/client-mediaconvert');
+const { MediaPackageVod } = require('@aws-sdk/client-mediapackage-vod');
+const { CloudFront } = require('@aws-sdk/client-cloudfront');
+const { S3 } = require('@aws-sdk/client-s3');
 const https = require('https');
 const url = require('url');
 
@@ -16,10 +19,18 @@ exports.handler = async (event, context) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
     
     // Initialize AWS services
-    mediaconvert = new aws.MediaConvert();
-    mediapackageVod = new aws.MediaPackageVod();
-    cloudfront = new aws.CloudFront();
-    s3 = new aws.S3();
+    mediaconvert = new MediaConvert({
+        customUserAgent: process.env.SOLUTION_IDENTIFIER
+    });
+    mediapackageVod = new MediaPackageVod({
+        customUserAgent: process.env.SOLUTION_IDENTIFIER
+    });
+    cloudfront = new CloudFront({
+        customUserAgent: process.env.SOLUTION_IDENTIFIER
+    });
+    s3 = new S3({
+        customUserAgent: process.env.SOLUTION_IDENTIFIER
+    });
     
     const responseData = {};
     let responseStatus = 'SUCCESS';
@@ -91,7 +102,7 @@ async function getMediaConvertEndpoint() {
             MaxResults: 1
         };
         
-        const result = await mediaconvert.describeEndpoints(params).promise();
+        const result = await mediaconvert.describeEndpoints(params);
         console.log('MediaConvert endpoints:', JSON.stringify(result, null, 2));
         return result.Endpoints[0].Url;
     } catch (error) {
@@ -168,7 +179,7 @@ async function handleMediaConvertTemplates(properties, responseData) {
             console.log(`Creating template: ${config.name}`);
             console.log('Template configuration:', JSON.stringify(template, null, 2));
             
-            await mediaconvert.createJobTemplate(template).promise();
+            await mediaconvert.createJobTemplate(template);
             createdTemplates.push(config.name);
             console.log(`Successfully created template: ${config.name}`);
         } catch (error) {
@@ -222,71 +233,6 @@ function generateJobTemplate(config, stackName) {
     baseTemplate.Settings.OutputGroups.push(generateStandardOutputGroup(config.resolution, config.type === 'mvod'));
     
     return baseTemplate;
-}
-
-/**
- * Generate Universal output group - HLS for MVOD (MediaPackage), CMAF for QVBR
- * Creates adaptive bitrate outputs with proper scaling behavior to prevent upscaling
- */
-function generateUniversalOutputGroup(isMVOD) {
-    // Define resolution tiers (height, width, bitrate, quality)
-    const resolutionTiers = [
-        { height: 2160, width: 3840, bitrate: 15000000, quality: 9, name: "2160p" },
-        { height: 1080, width: 1920, bitrate: 8500000, quality: 8, name: "1080p" },
-        { height: 720, width: 1280, bitrate: 6000000, quality: 8, name: "720p" },
-        { height: 540, width: 960, bitrate: 3500000, quality: 7, name: "540p" },
-        { height: 360, width: 640, bitrate: 1500000, quality: 7, name: "360p" }
-    ];
-
-    if (isMVOD) {
-        // Use HLS for MediaPackage VOD (MVOD)
-        return {
-            Name: "HLS ABR Group",
-            OutputGroupSettings: {
-                Type: "HLS_GROUP_SETTINGS",
-                HlsGroupSettings: {
-                    Destination: "s3://DESTINATION_BUCKET/hls/",
-                    SegmentLength: 6,
-                    MinSegmentLength: 0,
-                    DirectoryStructure: "SINGLE_DIRECTORY",
-                    ManifestDurationFormat: "INTEGER",
-                    StreamInfResolution: "INCLUDE"
-                }
-            },
-            Outputs: [
-                // Create outputs for each resolution tier with proper scaling behavior
-                ...resolutionTiers.map(tier => 
-                    generateVideoOutputWithScaling(tier.name, tier.width, tier.height, tier.bitrate, tier.quality, `_${tier.name}_video`, false)
-                ),
-                generateAudioOutput(false) // Use M3U8 for HLS
-            ]
-        };
-    } else {
-        // Use CMAF for QVBR (standard VOD)
-        return {
-            Name: "CMAF ABR Group",
-            OutputGroupSettings: {
-                Type: "CMAF_GROUP_SETTINGS",
-                CmafGroupSettings: {
-                    Destination: "s3://DESTINATION_BUCKET/cmaf/",
-                    SegmentLength: 6,
-                    FragmentLength: 6,
-                    SegmentControl: "SEGMENTED_FILES",
-                    WriteDashManifest: "ENABLED",
-                    WriteHlsManifest: "ENABLED",
-                    StreamInfResolution: "INCLUDE",
-                    WriteSegmentTimelineInRepresentation: "ENABLED"
-                }
-            },
-            Outputs: [
-                // Create outputs for each resolution tier with proper scaling behavior
-                ...resolutionTiers.map(tier => 
-                    generateVideoOutputWithScaling(tier.name, tier.width, tier.height, tier.bitrate, tier.quality, `_${tier.name}_video`, true)
-                ),
-                generateAudioOutput(true) // Use CMFC for CMAF
-            ]
-        };
-    }
 }
 
 /**
@@ -353,84 +299,6 @@ function generateStandardOutputGroup(resolution, isMVOD) {
     };
 }
 
-/**
- * Generate video output configuration with scaling behavior to prevent upscaling
- */
-function generateVideoOutputWithScaling(resolution, width, height, bitrate, quality, nameModifier, useCMFC = false) {
-    return {
-        NameModifier: nameModifier,
-        VideoDescription: {
-            Width: width,
-            Height: height,
-            ScalingBehavior: "DEFAULT", // MediaConvert will respect width/height constraints to prevent upscaling
-            TimecodeInsertion: "DISABLED",
-            AntiAlias: "ENABLED",
-            Sharpness: 50,
-            CodecSettings: {
-                Codec: "H_264",
-                H264Settings: {
-                    InterlaceMode: "PROGRESSIVE",
-                    NumberReferenceFrames: 3,
-                    Syntax: "DEFAULT",
-                    Softness: 0,
-                    GopClosedCadence: 1,
-                    GopSize: 90,
-                    Slices: 1,
-                    GopBReference: "DISABLED",
-                    SlowPal: "DISABLED",
-                    SpatialAdaptiveQuantization: "ENABLED",
-                    TemporalAdaptiveQuantization: "ENABLED",
-                    FlickerAdaptiveQuantization: "DISABLED",
-                    EntropyEncoding: "CABAC",
-                    MaxBitrate: bitrate,
-                    FramerateControl: "INITIALIZE_FROM_SOURCE",
-                    RateControlMode: "QVBR",
-                    QvbrSettings: {
-                        QvbrQualityLevel: quality,
-                        QvbrQualityLevelFineTune: 0
-                    },
-                    CodecProfile: "HIGH",
-                    Telecine: "NONE",
-                    MinIInterval: 0,
-                    AdaptiveQuantization: "HIGH",
-                    CodecLevel: "AUTO",
-                    FieldEncoding: "PAFF",
-                    SceneChangeDetect: "ENABLED",
-                    QualityTuningLevel: "SINGLE_PASS",
-                    FramerateConversionAlgorithm: "DUPLICATE_DROP",
-                    UnregisteredSeiTimecode: "DISABLED",
-                    GopSizeUnits: "FRAMES",
-                    ParControl: "INITIALIZE_FROM_SOURCE",
-                    NumberBFramesBetweenReferenceFrames: 2,
-                    RepeatPps: "DISABLED",
-                    DynamicSubGop: "STATIC"
-                }
-            },
-            AfdSignaling: "NONE",
-            DropFrameTimecode: "ENABLED",
-            RespondToAfd: "NONE",
-            ColorMetadata: "INSERT"
-        },
-        ContainerSettings: isMVOD ? {
-            Container: "M3U8",
-            M3u8Settings: {
-                AudioFramesPerPes: 4,
-                PcrControl: "PCR_EVERY_PES_PACKET",
-                PmtPid: 480,
-                ProgramNumber: 1,
-                PatInterval: 0,
-                PmtInterval: 0,
-                NielsenId3: "NONE",
-                TimedMetadata: "NONE",
-                VideoPid: 481,
-                AudioPids: [482]
-            }
-        } : {
-            Container: "CMFC",
-            CmfcSettings: {}
-        }
-    };
-}
 
 /**
  * Generate video output configuration
@@ -579,7 +447,7 @@ async function handleMediaPackageVod(properties, responseData) {
                 SolutionId: 'SO0021',
                 StackName: stackName
             }
-        }).promise();
+        });
         
         console.log(`Created packaging group: ${groupId}`);
     } catch (error) {
@@ -610,7 +478,7 @@ async function handleMediaPackageVod(properties, responseData) {
     }
     
     // Get packaging group details
-    const groupDetails = await mediapackageVod.describePackagingGroup({ Id: groupId }).promise();
+    const groupDetails = await mediapackageVod.describePackagingGroup({ Id: groupId });
     
     responseData.GroupId = groupId;
     responseData.GroupDomainName = groupDetails.DomainName;
@@ -740,7 +608,7 @@ async function createPackagingConfiguration(configId, groupId, configType, stack
             throw new Error(`Unsupported packaging configuration type: ${configType}`);
     }
     
-    return await mediapackageVod.createPackagingConfiguration(baseConfig).promise();
+    return await mediapackageVod.createPackagingConfiguration(baseConfig);
 }
 
 /**
@@ -775,7 +643,7 @@ async function deleteMediaConvertTemplates(properties) {
     
     for (const templateName of templateNames) {
         try {
-            await mediaconvert.deleteJobTemplate({ Name: templateName }).promise();
+            await mediaconvert.deleteJobTemplate({ Name: templateName });
             console.log(`Deleted template: ${templateName}`);
         } catch (error) {
             if (error.code !== 'NotFoundException') {
@@ -803,7 +671,7 @@ async function deleteMediaPackageVod(properties) {
     
     for (const configId of configsToDelete) {
         try {
-            await mediapackageVod.deletePackagingConfiguration({ Id: configId }).promise();
+            await mediapackageVod.deletePackagingConfiguration({ Id: configId });
             console.log(`Deleted packaging configuration: ${configId}`);
         } catch (error) {
             if (error.code !== 'NotFoundException') {
@@ -814,7 +682,7 @@ async function deleteMediaPackageVod(properties) {
     
     // Delete packaging group
     try {
-        await mediapackageVod.deletePackagingGroup({ Id: groupId }).promise();
+        await mediapackageVod.deletePackagingGroup({ Id: groupId });
         console.log(`Deleted packaging group: ${groupId}`);
     } catch (error) {
         if (error.code !== 'NotFoundException') {
