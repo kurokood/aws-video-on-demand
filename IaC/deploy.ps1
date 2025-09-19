@@ -41,9 +41,26 @@ if (-not $SkipDependencies) {
     Write-Host "Skipping Lambda dependencies installation (-SkipDependencies flag used)" -ForegroundColor Yellow
 }
 
-# Step 2: Terraform validation
+# Step 2: Initialize Terraform
 Write-Host ""
-Write-Host "Step 2: Validating Terraform Configuration" -ForegroundColor Yellow
+Write-Host "Step 2: Initializing Terraform" -ForegroundColor Yellow
+Write-Host "===============================" -ForegroundColor Yellow
+
+try {
+    terraform init
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Terraform initialization failed. Exiting deployment."
+        exit 1
+    }
+    Write-Host "Terraform initialized successfully" -ForegroundColor Green
+} catch {
+    Write-Error "Error during Terraform initialization: $_"
+    exit 1
+}
+
+# Step 3: Terraform validation
+Write-Host ""
+Write-Host "Step 3: Validating Terraform Configuration" -ForegroundColor Yellow
 Write-Host "=============================================" -ForegroundColor Yellow
 
 try {
@@ -58,10 +75,10 @@ try {
     exit 1
 }
 
-# Step 3: Terraform plan (unless skipped)
+# Step 4: Terraform plan (unless skipped)
 if (-not $SkipPlan) {
     Write-Host ""
-    Write-Host "Step 3: Creating Terraform Plan" -ForegroundColor Yellow
+    Write-Host "Step 4: Creating Terraform Plan" -ForegroundColor Yellow
     Write-Host "=================================" -ForegroundColor Yellow
     
     try {
@@ -79,9 +96,9 @@ if (-not $SkipPlan) {
     Write-Host "Skipping Terraform plan (-SkipPlan flag used)" -ForegroundColor Yellow
 }
 
-# Step 4: Terraform apply
+# Step 5: Terraform apply
 Write-Host ""
-Write-Host "Step 4: Applying Terraform Configuration" -ForegroundColor Yellow
+Write-Host "Step 5: Applying Terraform Configuration" -ForegroundColor Yellow
 Write-Host "===========================================" -ForegroundColor Yellow
 
 try {
@@ -126,6 +143,7 @@ Write-Host ""
 Write-Host "Deployment Summary" -ForegroundColor Green
 Write-Host "===================" -ForegroundColor Green
 Write-Host "Lambda dependencies: Installed" -ForegroundColor Green
+Write-Host "Terraform initialization: Completed" -ForegroundColor Green
 Write-Host "Terraform validation: Passed" -ForegroundColor Green
 if (-not $SkipPlan) {
     Write-Host "Terraform plan: Created" -ForegroundColor Green
