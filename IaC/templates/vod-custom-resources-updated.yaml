@@ -179,7 +179,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub '${StackName}-custom-resource'
-      Runtime: nodejs18.x
+      Runtime: nodejs22.x
       Handler: index.handler
       Role: !GetAtt CustomResourceRole.Arn
       Timeout: 300
