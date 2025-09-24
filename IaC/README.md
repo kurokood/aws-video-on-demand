@@ -12,14 +12,16 @@ The Terraform configuration is organized into modules for better maintainability
 - **messaging**: SNS and SQS for notifications and messaging
 - **lambda**: Lambda functions for workflow processing
 - **step_functions**: Step Functions state machines for orchestration
-- **mediaconvert**: MediaConvert resources and roles
+- **media_resources**: MediaConvert templates and MediaPackage VOD configuration (PowerShell-based)
 - **events**: EventBridge rules for workflow triggers
 
 ## Prerequisites
 
 1. **Terraform**: Install Terraform >= 1.0
 2. **AWS CLI**: Configure AWS credentials
-3. **Lambda Code**: The actual Lambda function code needs to be packaged and uploaded to S3
+3. **PowerShell**: Windows PowerShell 5.1+ or PowerShell Core 6.0+
+4. **AWS PowerShell Module**: Install using `Install-Module -Name AWSPowerShell`
+5. **Lambda Code**: The actual Lambda function code needs to be packaged and uploaded to S3
 
 ## Deployment
 
@@ -50,17 +52,12 @@ The Terraform configuration is organized into modules for better maintainability
    terraform apply
    ```
 
-6. **Create MediaConvert templates and MediaPackage VOD resources:**
+6. **Install Lambda dependencies:**
    ```powershell
-   # Install Lambda dependencies first
    .\create-lambda-functions-dependencies.ps1
-   
-   # Create universal MediaConvert template (iOS and Android compatible)
-   .\create-mediaconvert-templates.ps1 -StackName "your-stack-name" -EnableMediaPackage "Yes"
-   
-   # Create MediaPackage VOD resources (if MediaPackage is enabled)
-   .\create-mediapackage-vod-groups.ps1 -StackName "your-stack-name"
    ```
+
+**Note**: MediaConvert templates and MediaPackage VOD resources are now created automatically by Terraform using PowerShell scripts. No manual script execution is required.
 
 ## Important Notes
 
@@ -75,12 +72,14 @@ This Terraform configuration creates placeholder Lambda functions. In a producti
 
 ### MediaConvert Templates and MediaPackage VOD
 
-The MediaConvert job templates and MediaPackage VOD packaging groups are created using PowerShell scripts:
+The MediaConvert job templates and MediaPackage VOD packaging groups are now created automatically by Terraform using PowerShell scripts:
 
-1. **MediaConvert Templates**: Run `create-mediaconvert-templates.ps1` to create a single universal CMAF template that supports both iOS and Android devices with adaptive bitrate streaming (2160p, 1080p, 720p, 540p, 360p). The template is defined in `templates/universal_cmaf_template.json`
-2. **MediaPackage VOD**: Run `create-mediapackage-vod-groups.ps1` to create packaging groups and configurations
+1. **MediaConvert Templates**: Creates resolution-specific templates (2160p, 1080p, 720p) with adaptive bitrate streaming
+   - **QVBR Templates**: Use CMAF format for standard VOD processing
+   - **MVOD Templates**: Use HLS format for MediaPackage VOD processing (changed from CMAF)
+2. **MediaPackage VOD**: Creates packaging groups and configurations for HLS, DASH, MSS, and CMAF
 
-These scripts should be run after the Terraform deployment is complete.
+The scripts are located in the `scripts/` directory and are executed automatically during `terraform apply` and `terraform destroy` operations.
 
 ### S3 Event Notifications
 

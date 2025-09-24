@@ -100,8 +100,8 @@ module "lambda" {
   enable_sns                      = local.enable_sns
   enable_sqs                      = local.enable_sqs
   accelerated_transcoding         = var.accelerated_transcoding
-  mediapackage_group_id           = module.custom_resources.mediapackage_group_id
-  mediapackage_domain_name        = module.custom_resources.mediapackage_group_domain_name
+  mediapackage_group_id           = module.media_resources.mediapackage_group_id
+  mediapackage_domain_name        = module.media_resources.mediapackage_group_domain_name
 }
 
 module "database" {
@@ -127,20 +127,14 @@ module "step_functions" {
   enable_media_package      = local.enable_media_package
 }
 
-module "custom_resources" {
-  source = "./modules/custom_resources"
+module "media_resources" {
+  source = "./modules/media_resources"
 
   stack_name                 = local.stack_name
-  admin_email                = var.admin_email
-  workflow_trigger           = var.workflow_trigger
-  glacier                    = var.glacier
-  frame_capture              = local.frame_capture
-  enable_media_package       = local.enable_media_package
-  enable_sns                 = local.enable_sns
-  enable_sqs                 = local.enable_sqs
-  accelerated_transcoding    = var.accelerated_transcoding
+  aws_region                 = var.aws_region
   source_bucket_arn          = module.storage.source_bucket.arn
   destination_bucket_arn     = module.storage.destination_bucket.arn
+  enable_media_package       = local.enable_media_package
   cloudfront_distribution_id = module.cloudfront.distribution_id
 }
 

@@ -13,8 +13,7 @@ $lambdaFunctions = @(
     "archive-source",
     "sns-notification",
     "sqs-publish",
-    "media-package-assets",
-    "custom-resource"
+    "media-package-assets"
 )
 
 $totalFunctions = $lambdaFunctions.Count
