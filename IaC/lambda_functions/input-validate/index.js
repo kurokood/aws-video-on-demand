@@ -71,12 +71,13 @@ exports.handler = async (event) => {
 
                 break;
 
+            case 'VideoFile':
             case 'Video':
                 data.srcVideo = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));
                 break;
 
             default:
-                throw new Error('event.workflowTrigger is not defined.');
+                throw new Error(`Unsupported workflow trigger: ${event.workflowTrigger}. Supported values: Metadata, VideoFile`);
         }
 
         // The MediaPackage setting is configured at the stack level, and it cannot be updated via metadata.

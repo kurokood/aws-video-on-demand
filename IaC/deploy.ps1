@@ -4,17 +4,126 @@
 param(
     [switch]$SkipDependencies,
     [switch]$SkipPlan,
-    [string]$TerraformAction = "apply"
+    [string]$TerraformAction = "apply",
+    [switch]$Help
 )
+
+# Display help information
+if ($Help) {
+    Write-Host "VOD Infrastructure Deployment Script" -ForegroundColor Green
+    Write-Host "=====================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Usage: .\deploy.ps1 [OPTIONS]" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Options:" -ForegroundColor Yellow
+    Write-Host "  -SkipDependencies       Skip Lambda function dependency installation"
+    Write-Host "  -SkipPlan              Skip Terraform plan step (deploy directly)"
+    Write-Host "  -TerraformAction       Specify 'apply' or 'destroy' (default: apply)"
+    Write-Host "  -Help                  Show this help message"
+    Write-Host ""
+    Write-Host "Examples:" -ForegroundColor Cyan
+    Write-Host "  .\deploy.ps1                           # Full deployment with plan"
+    Write-Host "  .\deploy.ps1 -SkipPlan                 # Deploy without plan (faster)"
+    Write-Host "  .\deploy.ps1 -SkipDependencies        # Skip Lambda dependencies"
+    Write-Host "  .\deploy.ps1 -TerraformAction destroy  # Destroy infrastructure"
+    exit 0
+}
 
 Write-Host "Starting VOD Infrastructure Deployment" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
 
-# Check if we're in the correct directory
-if (-not (Test-Path "main.tf")) {
-    Write-Error "Error: main.tf not found. Please run this script from the IaC directory."
-    exit 1
+# Function to check prerequisites
+function Test-Prerequisites {
+    Write-Host ""
+    Write-Host "Checking Prerequisites" -ForegroundColor Yellow
+    Write-Host "======================" -ForegroundColor Yellow
+    
+    $errors = 0
+    
+    # Check if we're in the correct directory
+    if (-not (Test-Path "main.tf")) {
+        Write-Error "Error: main.tf not found. Please run this script from the IaC directory."
+        $errors++
+    }
+    
+    # Check if Terraform is installed
+    try {
+        $terraformVersion = terraform --version 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ Terraform is installed: $($terraformVersion.Split("`n")[0])" -ForegroundColor Green
+        } else {
+            Write-Error "❌ Terraform is not installed or not in PATH"
+            $errors++
+        }
+    } catch {
+        Write-Error "❌ Terraform is not installed or not in PATH"
+        $errors++
+    }
+    
+    # Check AWS CLI
+    try {
+        $awsVersion = aws --version 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ AWS CLI is installed: $awsVersion" -ForegroundColor Green
+        } else {
+            Write-Warning "⚠️ AWS CLI not found - may be required for some operations"
+        }
+    } catch {
+        Write-Warning "⚠️ AWS CLI not found - may be required for some operations"
+    }
+    
+    # Check Node.js for Lambda dependencies
+    if (-not $SkipDependencies) {
+        try {
+            $nodeVersion = node --version 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ Node.js is installed: $nodeVersion" -ForegroundColor Green
+            } else {
+                Write-Error "❌ Node.js is required for Lambda dependencies"
+                $errors++
+            }
+        } catch {
+            Write-Error "❌ Node.js is required for Lambda dependencies"
+            $errors++
+        }
+        
+        try {
+            $npmVersion = npm --version 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ npm is installed: $npmVersion" -ForegroundColor Green
+            } else {
+                Write-Error "❌ npm is required for Lambda dependencies"
+                $errors++
+            }
+        } catch {
+            Write-Error "❌ npm is required for Lambda dependencies"
+            $errors++
+        }
+    }
+    
+    # Check AWS credentials
+    try {
+        $awsIdentity = aws sts get-caller-identity 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $identity = $awsIdentity | ConvertFrom-Json
+            Write-Host "✅ AWS credentials configured for Account: $($identity.Account)" -ForegroundColor Green
+        } else {
+            Write-Warning "⚠️ AWS credentials not configured or not accessible"
+        }
+    } catch {
+        Write-Warning "⚠️ Could not verify AWS credentials"
+    }
+    
+    if ($errors -gt 0) {
+        Write-Error "Prerequisites check failed. Please resolve the above issues before continuing."
+        exit 1
+    }
+    
+    Write-Host "✅ All prerequisites satisfied" -ForegroundColor Green
 }
+
+# Run prerequisites check
+Test-Prerequisites
 
 # Step 1: Install Lambda function dependencies (unless skipped)
 if (-not $SkipDependencies) {

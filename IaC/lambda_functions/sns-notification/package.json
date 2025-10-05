@@ -3,7 +3,23 @@
   "version": "1.0.0",
   "description": "SNS Notification Lambda for Video on Demand",
   "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "video",
+    "vod",
+    "notifications",
+    "sns"
+  ],
+  "author": "AWS Solutions",
+  "license": "Apache-2.0",
   "dependencies": {
     "@aws-sdk/client-sns": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

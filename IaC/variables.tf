@@ -7,9 +7,14 @@ variable "aws_region" {
 }
 
 variable "stack_name" {
-  description = "Name of the stack (used for resource naming)"
+  description = "Name of the stack (used for resource naming). Must be lowercase and contain only letters, numbers, and hyphens."
   type        = string
   default     = "video-on-demand"
+  
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.stack_name)) && length(var.stack_name) <= 40
+    error_message = "Stack name must be lowercase, contain only letters, numbers, and hyphens, and be 40 characters or less."
+  }
 }
 
 variable "admin_email" {

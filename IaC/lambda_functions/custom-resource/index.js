@@ -16,7 +16,11 @@ let s3;
  * Based on Video on Demand on AWS Solution
  */
 exports.handler = async (event, context) => {
-    console.log('Received event:', JSON.stringify(event, null, 2));
+    console.log('Custom Resource Lambda invoked:', {
+        RequestType: event.RequestType,
+        ResourceType: event.ResourceProperties?.Resource,
+        LogicalResourceId: event.LogicalResourceId
+    });
     
     // Initialize AWS services
     mediaconvert = new MediaConvert({

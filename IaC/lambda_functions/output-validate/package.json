@@ -3,7 +3,24 @@
   "version": "1.0.0",
   "description": "Output Validate Lambda for Video on Demand",
   "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "video",
+    "vod",
+    "validation"
+  ],
+  "author": "AWS Solutions",
+  "license": "Apache-2.0",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.0.0"
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

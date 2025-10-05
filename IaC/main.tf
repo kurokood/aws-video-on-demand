@@ -1,6 +1,3 @@
-# Video on Demand on AWS - Terraform Implementation
-# Main configuration file
-
 terraform {
   required_version = ">= 1.5.0"
   required_providers {
@@ -21,11 +18,13 @@ terraform {
       version = "~> 2.4"
     }
   }
+  
   backend "s3" {
-    bucket         = "tf-state-store-121485"
-    key            = "vod/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "tf-state-lock-121485"
+  bucket         = "tf-state-store-121485"
+  key            = "video-on-demand/terraform.tfstate"
+  region         = "us-east-1"
+  encrypt        = true
+  dynamodb_table = "tf-state-lock-121485"
   }
 }
 

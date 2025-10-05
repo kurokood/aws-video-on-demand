@@ -1,35 +1,357 @@
-# Video on Demand on AWS
+# Video on Demand on AWS - Terraform Implementation
 
-How to implement a video-on-demand workflow on AWS leveraging AWS Step Functions,
-AWS Elemental MediaConvert, and AWS Elemental MediaPackage.
-Source code for [Video on Demand on AWS][vod-landing] solution.
+Modern serverless video processing solution on AWS using Terraform Infrastructure as Code. This implementation leverages AWS Step Functions, AWS Elemental MediaConvert, and AWS Elemental MediaPackage to create a scalable, automated video processing pipeline.
 
-## On this Page
-- [Video on Demand on AWS](#video-on-demand-on-aws)
-  - [On this Page](#on-this-page)
-  - [Architecture Overview](#architecture-overview)
-  - [Deployment](#deployment)
-  - [Workflow Configuration](#workflow-configuration)
-      - [Environment Variables:](#environment-variables)
-    - [WorkFlow Triggers](#workflow-triggers)
-      - [Source Video Option](#source-video-option)
-      - [Source Metadata Option](#source-metadata-option)
-  - [Encoding Templates](#encoding-templates)
-  - [QVBR Mode](#qvbr-mode)
-  - [Accelerated Transcoding](#accelerated-transcoding)
-  - [Source code](#source-code)
-    - [Node.js 22](#nodejs-22)
-    - [Python 3.13](#python-313)
-  - [Creating a custom build](#creating-a-custom-build)
-    - [Prerequisites:](#prerequisites)
-    - [1. Running unit tests for customization](#1-running-unit-tests-for-customization)
-    - [2. Create an Amazon S3 Bucket](#2-create-an-amazon-s3-bucket)
-    - [3. Build MediaInfo](#3-build-mediainfo)
-    - [4. Create the deployment packages](#4-create-the-deployment-packages)
-    - [5. Launch the CloudFormation template.](#5-launch-the-cloudformation-template)
-  - [Additional Resources](#additional-resources)
-    - [Services](#services)
-    - [Other Solutions and Demos](#other-solutions-and-demos)
+## 🏗️ Architecture Overview
+
+![Architecture](architecture.png)
+
+This solution implements a **3-stage workflow** for video processing:
+
+1. **Ingest Stage**: Validates input → Extracts metadata → Updates tracking
+2. **Process Stage**: Profiles video → Submits encoding job → Monitors progress
+3. **Publish Stage**: Validates output → Archives source → Creates MediaPackage assets → Sends notifications
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **AWS CLI** configured with appropriate permissions
+- **Terraform** >= 1.5.0
+- **Node.js** >= 22.0.0 and npm
+- **PowerShell** (Windows) or Bash (Linux/macOS)
+
+### 1. Clone and Configure
+```powershell
+git clone <repository-url>
+cd fullstack-vod-architecture/IaC
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your configuration
+```
+
+### 2. Deploy Infrastructure
+```powershell
+# Option 1: Full deployment with interactive prompts
+.\deploy.ps1
+
+# Option 2: Quick deployment (skip dependency check and plan)
+.\deploy.ps1 -SkipPlan -SkipDependencies
+
+# Option 3: Help and usage information
+.\deploy.ps1 -Help
+```
+
+### 3. Configuration Options
+
+Key variables in `terraform.tfvars`:
+```hcl
+# Core Configuration
+aws_region         = "us-east-1"
+stack_name         = "vod-solution"
+admin_email        = "admin@example.com"
+
+# Feature Toggles
+enable_media_package    = "Yes"  # Enable MediaPackage VOD
+enable_sns              = "Yes"  # Enable SNS notifications
+enable_sqs              = "Yes"  # Enable SQS queue
+frame_capture          = "Yes"  # Enable thumbnail generation
+accelerated_transcoding = "PREFERRED"  # ENABLED, PREFERRED, DISABLED
+
+# Advanced Options
+workflow_trigger = "VideoFile"  # VideoFile or MetadataFile
+glacier         = "GLACIER"     # GLACIER, DEEP_ARCHIVE
+```
+
+## 📁 Project Structure
+
+```
+IaC/
+├── 📄 main.tf                    # Main Terraform configuration
+├── 📄 variables.tf              # Variable definitions  
+├── 📄 outputs.tf                # Output definitions
+├── 🛠️ deploy.ps1                # Deployment script
+├── 🛠️ create-lambda-functions-dependencies.ps1  # Lambda build script
+├── 📁 modules/                   # Terraform modules
+│   ├── 📁 storage/              # S3 buckets and lifecycle policies
+│   ├── 📁 lambda/               # Lambda functions and IAM roles
+│   ├── 📁 step_functions/       # Step Functions workflows
+│   ├── 📁 database/             # DynamoDB table
+│   ├── 📁 messaging/            # SNS topics and SQS queues
+│   ├── 📁 cloudfront/           # CloudFront distribution
+│   ├── 📁 custom_resources/     # CloudFormation custom resources
+│   ├── 📁 events/               # EventBridge rules
+│   └── 📁 s3_notifications/     # S3 event notifications
+├── 📁 lambda_functions/         # Lambda function source code
+│   ├── 📁 input-validate/       # Input validation (Node.js 22)
+│   ├── 📁 mediainfo/            # Video metadata extraction (Python 3.13)
+│   ├── 📁 profiler/             # Template selection logic (Node.js 22)
+│   ├── 📁 encode/               # MediaConvert job submission (Node.js 22)
+│   ├── 📁 dynamo-update/        # DynamoDB operations (Node.js 22)
+│   ├── 📁 output-validate/      # Output validation (Node.js 22)
+│   ├── 📁 archive-source/       # Source archiving (Node.js 22)
+│   ├── 📁 media-package-assets/ # MediaPackage integration (Node.js 22)
+│   ├── 📁 sns-notification/     # SNS notifications (Node.js 22)
+│   ├── 📁 sqs-publish/          # SQS publishing (Node.js 22)
+│   ├── 📁 error-handler/        # Error handling (Node.js 22)
+│   ├── 📁 step-functions/       # Workflow orchestration (Node.js 22)
+│   └── 📁 custom-resource/      # Custom resource handler (Node.js 22)
+└── 📁 templates/                # CloudFormation templates and configs
+```
+
+## 🎬 Workflow Configuration
+
+### Environment Variables
+Each Lambda function is configured with environment variables for:
+- **Archive Source**: Automated Glacier archiving of source files
+- **CloudFront**: Content delivery network domain for playback URLs
+- **Frame Capture**: Thumbnail generation from video content
+- **MediaConvert Templates**: Dynamic template selection based on source resolution
+- **Workflow Tracking**: Comprehensive job monitoring and status updates
+
+### Workflow Triggers
+
+#### 🎥 Source Video Option (Default)
+Triggers on video file uploads to the source S3 bucket.
+**Supported formats**: MP4, MPG, MPEG, M4V, MOV, M2TS, MTS, TS, AVI, MKV, WMV, FLV, WebM, 3GP, ASF, VOB
+
+#### 📋 Source Metadata Option  
+Triggers on JSON metadata file uploads, allowing per-video configuration.
+
+**Example metadata file**:
+```json
+{
+    "srcVideo": "example.mp4",
+    "archiveSource": true,
+    "frameCapture": true,
+    "jobTemplate": "custom-template-name",
+    "inputRotate": "AUTO",
+    "title": "My Video Title",
+    "genre": "Documentary"
+}
+```
+
+## 🎯 Intelligent Template Selection
+
+The **Profiler Lambda** automatically selects optimal MediaConvert templates based on source video resolution to **prevent upscaling**:
+
+```javascript
+// Smart template selection prevents quality degradation
+if (srcHeight >= 2160 && srcWidth >= 3840) return template2160p;
+else if (srcHeight >= 1080 && srcWidth >= 1920) return template1080p;
+else if (srcHeight >= 720 && srcWidth >= 1280) return template720p;
+// Falls back to source resolution if lower than 720p
+```
+
+**Available Templates**:
+- **2160p (4K)**: UHD content with multiple bitrates
+- **1080p (HD)**: Full HD with adaptive streaming
+- **720p (SD)**: Standard definition with mobile optimization
+
+## ⚡ Advanced Features
+
+### QVBR (Quality-defined Variable Bitrate)
+Optimized encoding settings for OTT and VOD content:
+
+| Resolution | Max Bitrate | QVBR Quality Level |
+|------------|-------------|-------------------|
+| 2160p      | 15,000 Kbps | 9                |
+| 1080p      | 8,500 Kbps  | 8                |
+| 720p       | 6,000 Kbps  | 8                |
+| 540p       | 3,500 Kbps  | 7                |
+| 360p       | 1,500 Kbps  | 7                |
+
+### Accelerated Transcoding
+AWS MediaConvert Pro Tier feature options:
+- **ENABLED**: All jobs use acceleration (fails on unsupported content)
+- **PREFERRED**: Uses acceleration when supported, graceful fallback
+- **DISABLED**: Standard transcoding only
+
+### MediaPackage VOD Integration
+Automatic content packaging for:
+- **HLS**: iOS and Safari compatibility
+- **DASH**: Android and modern browsers  
+- **CMAF**: Universal format for all devices
+
+## 🛠️ Development & Customization
+
+### Building Lambda Dependencies
+```powershell
+# Install all dependencies
+.\create-lambda-functions-dependencies.ps1
+
+# Clean build (removes existing node_modules)
+.\create-lambda-functions-dependencies.ps1 -Clean
+
+# Verbose output for troubleshooting
+.\create-lambda-functions-dependencies.ps1 -Verbose
+```
+
+### Source Code Structure
+### Source Code Structure
+
+#### Lambda Functions (Node.js 22)
+- **input-validate**: S3 event parsing and workflow parameter definition
+- **profiler**: Intelligent template selection based on source video resolution  
+- **encode**: MediaConvert job submission with fallback template logic
+- **dynamo-update**: DynamoDB state management and tracking
+- **output-validate**: MediaConvert job completion processing
+- **archive-source**: S3 lifecycle management and Glacier archiving
+- **media-package-assets**: MediaPackage VOD asset creation and management
+- **sns-notification**: SNS notification delivery
+- **sqs-publish**: SQS message publishing
+- **error-handler**: Centralized error handling and notifications
+- **step-functions**: Workflow orchestration and execution
+- **custom-resource**: CloudFormation custom resource management
+
+#### Python Functions (Python 3.13)
+- **mediainfo**: Advanced video metadata extraction and analysis
+
+### Backend Configuration
+The solution supports flexible backend configuration:
+
+```hcl
+# Create backend.conf file for your environment
+bucket         = "your-terraform-state-bucket"
+key            = "vod/terraform.tfstate" 
+region         = "us-east-1"
+dynamodb_table = "your-terraform-lock-table"
+```
+
+Initialize with backend configuration:
+```powershell
+terraform init -backend-config="backend.conf"
+```
+
+## 📊 Monitoring & Troubleshooting
+
+### CloudWatch Integration
+- **Lambda Logs**: Structured logging with request/response tracking
+- **Step Functions**: Visual workflow execution monitoring
+- **MediaConvert**: Job progress and error tracking
+- **Custom Metrics**: Solution-specific performance indicators
+
+### Error Handling
+- **Centralized Error Handler**: Captures and processes all workflow errors
+- **SNS Notifications**: Real-time error alerts to administrators
+- **DynamoDB Tracking**: Persistent error state and retry information
+- **CloudWatch Alarms**: Automated monitoring and alerting
+
+### Common Issues & Solutions
+
+#### Template Not Found Errors
+The encode function includes comprehensive fallback logic:
+1. Try original template name
+2. Try template with `_fixed` suffix  
+3. Try alternate template type (`_mvod_` ↔ `_qvbr_`)
+4. Try fixed version of alternate template
+
+#### MediaConvert Endpoint Resolution
+Automatic endpoint discovery with fallback to environment variables:
+```javascript
+// Dynamic endpoint resolution
+const endpoints = await mediaconvert.describeEndpoints({});
+const discovered = endpoints?.Endpoints?.[0]?.Url;
+```
+
+## 🔧 Configuration Examples
+
+### Multi-Environment Setup
+```hcl
+# dev.tfvars
+stack_name              = "vod-dev"
+enable_media_package    = "No"
+accelerated_transcoding = "DISABLED"
+
+# prod.tfvars  
+stack_name              = "vod-prod"
+enable_media_package    = "Yes"
+accelerated_transcoding = "PREFERRED"
+```
+
+### Custom Template Configuration
+```json
+{
+    "srcVideo": "content.mp4",
+    "jobTemplate": "custom-4k-template",
+    "frameCapture": true,
+    "archiveSource": false,
+    "metadata": {
+        "title": "Custom Content",
+        "category": "Premium",
+        "tags": ["4K", "HDR"]
+    }
+}
+```
+
+## 📈 Performance Optimization
+
+### Resolution-Based Processing
+- **Source Analysis**: Automatic detection of video resolution and format
+- **Template Matching**: Prevents upscaling by selecting appropriate templates
+- **Bitrate Optimization**: QVBR settings tuned for each resolution tier
+- **Format Selection**: CMAF for universal device compatibility
+
+### Cost Optimization
+- **Intelligent Archiving**: Automatic Glacier lifecycle policies
+- **Accelerated Transcoding**: Use PREFERRED mode for cost-effective acceleration
+- **Template Efficiency**: Single universal template reduces management overhead
+- **Resource Tagging**: Comprehensive tagging for cost allocation
+
+## 🔒 Security Best Practices
+
+### IAM Permissions
+- **Least Privilege**: Each Lambda function has minimal required permissions
+- **Resource-Specific**: ARNs scoped to specific resources where possible
+- **Cross-Service**: Proper service-to-service authentication
+
+### Data Protection
+- **Encryption**: S3 buckets with server-side encryption
+- **VPC Integration**: Optional VPC deployment for network isolation
+- **Access Logging**: CloudTrail and S3 access logs for audit trails
+
+## 🚀 Deployment Strategies
+
+### Development Workflow
+```powershell
+# 1. Development deployment
+.\deploy.ps1 -SkipPlan
+
+# 2. Testing with clean dependencies  
+.\deploy.ps1 -Clean
+
+# 3. Production deployment with validation
+.\deploy.ps1  # Full deployment with plan review
+```
+
+### CI/CD Integration
+```yaml
+# Example GitHub Actions workflow
+- name: Deploy Infrastructure
+  run: |
+    cd IaC
+    terraform init -backend-config="prod.backend.conf"
+    terraform plan -var-file="prod.tfvars"
+    terraform apply -auto-approve
+```
+
+## 📚 Additional Resources
+
+### AWS Services Documentation
+- [AWS Elemental MediaConvert](https://docs.aws.amazon.com/mediaconvert/) - Video processing and transcoding
+- [AWS Elemental MediaPackage](https://docs.aws.amazon.com/mediapackage/) - Video packaging and delivery
+- [AWS Step Functions](https://docs.aws.amazon.com/step-functions/) - Serverless workflow orchestration
+- [AWS Lambda](https://docs.aws.amazon.com/lambda/) - Serverless compute
+- [Amazon CloudFront](https://docs.aws.amazon.com/cloudfront/) - Global content delivery
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) - Infrastructure as Code
+
+### Related Solutions
+- [Live Streaming on AWS](https://aws.amazon.com/solutions/implementations/live-streaming-on-aws/)
+- [Media Analysis Solution](https://aws.amazon.com/solutions/implementations/media-analysis-solution/)
+- [Content Analysis on AWS](https://aws.amazon.com/solutions/implementations/content-analysis-on-aws/)
+
+### Learning Resources  
+- [AWS Media Services Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/36b2f876-bb16-4b35-b530-96b894833cdc/en-US)
+- [Serverless Video Processing](https://aws.amazon.com/getting-started/hands-on/serverless-video-processing/)
+- [MediaConvert Best Practices](https://docs.aws.amazon.com/mediaconvert/latest/ug/best-practices.html)
 
 ## Architecture Overview
 ![Architecture](architecture.png)
