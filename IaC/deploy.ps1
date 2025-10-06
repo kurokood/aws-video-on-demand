@@ -131,21 +131,21 @@ if (-not $SkipDependencies) {
     Write-Host "Step 1: Installing Lambda Function Dependencies" -ForegroundColor Yellow
     Write-Host "=================================================" -ForegroundColor Yellow
     
-    if (Test-Path "create-lambda-functions-dependencies.ps1") {
-        try {
-            & ".\create-lambda-functions-dependencies.ps1"
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Lambda dependencies installation failed. Exiting deployment."
+        if (Test-Path "install-lambda-dependencies.ps1") {
+            try {
+                & ".\install-lambda-dependencies.ps1"
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Error "Lambda dependencies installation failed. Exiting deployment."
+                    exit 1
+                }
+                Write-Host "Lambda dependencies installed successfully" -ForegroundColor Green
+            } catch {
+                Write-Error "Error running Lambda dependencies script: $_"
                 exit 1
             }
-            Write-Host "Lambda dependencies installed successfully" -ForegroundColor Green
-        } catch {
-            Write-Error "Error running Lambda dependencies script: $_"
-            exit 1
+        } else {
+            Write-Warning "install-lambda-dependencies.ps1 not found. Skipping dependency installation."
         }
-    } else {
-        Write-Warning "create-lambda-functions-dependencies.ps1 not found. Skipping dependency installation."
-    }
 } else {
     Write-Host "Skipping Lambda dependencies installation (-SkipDependencies flag used)" -ForegroundColor Yellow
 }
