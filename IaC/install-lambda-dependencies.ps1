@@ -15,9 +15,9 @@ function Remove-NodeModules {
     param([string]$FunctionPath)
     $nodeModulesPath = Join-Path $FunctionPath "node_modules"
     if (Test-Path $nodeModulesPath) {
-        Write-Host "  🧹 Cleaning existing node_modules..." -ForegroundColor Yellow
+        Write-Host "  Cleaning existing node_modules..." -ForegroundColor Yellow
         Remove-Item $nodeModulesPath -Recurse -Force
-        Write-Host "  ✅ Cleaned node_modules" -ForegroundColor Green
+        Write-Host "  Cleaned node_modules" -ForegroundColor Green
     }
 }
 
@@ -42,7 +42,7 @@ foreach ($function in $nodeFunctions) {
     if ($Clean) {
         Remove-NodeModules -FunctionPath $functionPath
     }
-    Write-Host "  🔧 Installing Node.js dependencies..." -ForegroundColor Yellow
+    Write-Host "  Installing Node.js dependencies..." -ForegroundColor Yellow
     Push-Location $functionPath
     try {
         $npmArgs = @("install", "--production")
@@ -51,18 +51,18 @@ foreach ($function in $nodeFunctions) {
         if ($LASTEXITCODE -eq 0) {
             if (Test-Path "node_modules") {
                 $moduleCount = (Get-ChildItem "node_modules" -Directory).Count
-                Write-Host "  ✅ Dependencies installed successfully ($moduleCount modules)" -ForegroundColor Green
+                Write-Host ("  Dependencies installed successfully ({0} modules)" -f $moduleCount) -ForegroundColor Green
                 $successCount++
             } else {
-                Write-Host "  ⚠️  No dependencies were installed (no node_modules created)" -ForegroundColor Yellow
+                Write-Host "  No dependencies were installed (no node_modules created)" -ForegroundColor Yellow
                 $successCount++
             }
         } else {
-            Write-Error "  ❌ npm install failed with exit code $LASTEXITCODE"
+            Write-Error "  npm install failed with exit code $LASTEXITCODE"
             $errorCount++
         }
     } catch {
-        Write-Error "  ❌ Error installing dependencies: $_"
+        Write-Error "  Error installing dependencies: $_"
         $errorCount++
     } finally {
         Pop-Location
@@ -83,30 +83,30 @@ if (Test-Path $mediainfoPath) {
             if ($LASTEXITCODE -eq 0) { $pythonFound = $true }
         } catch { $pythonFound = $false }
         if ($pythonFound) {
-            Write-Host "  🔧 Installing Python dependencies with pip..." -ForegroundColor Yellow
+            Write-Host "  Installing Python dependencies with pip..." -ForegroundColor Yellow
             Push-Location $mediainfoPath
             try {
                 python -m pip install -r requirements.txt -t .
                 if ($LASTEXITCODE -eq 0) {
-                    Write-Host "  ✅ Python dependencies installed successfully" -ForegroundColor Green
+                    Write-Host "  Python dependencies installed successfully" -ForegroundColor Green
                     $successCount++
                 } else {
-                    Write-Error "  ❌ Failed to install Python dependencies"
+                    Write-Error "  Failed to install Python dependencies"
                     $errorCount++
                 }
             } catch {
-                Write-Error "  ❌ Error installing Python dependencies: $_"
+                Write-Error "  Error installing Python dependencies: $_"
                 $errorCount++
             } finally {
                 Pop-Location
             }
         } else {
-            Write-Warning "  ⚠️  Python not found. Skipping dependency installation."
-            Write-Host "  ✅ Function ready (assuming dependencies are built-in)" -ForegroundColor Green
+            Write-Warning "  Python not found. Skipping dependency installation."
+            Write-Host "  Function ready (assuming dependencies are built-in)" -ForegroundColor Green
             $successCount++
         }
     } else {
-        Write-Host "  ✅ No requirements.txt found - using built-in dependencies only" -ForegroundColor Green
+        Write-Host "  No requirements.txt found - using built-in dependencies only" -ForegroundColor Green
         $successCount++
     }
 }
@@ -115,13 +115,13 @@ if (Test-Path $mediainfoPath) {
 Write-Host ""
 Write-Host "=== Build Summary ===" -ForegroundColor Green
 Write-Host "=====================" -ForegroundColor Green
-Write-Host "Total functions processed: $($nodeFunctions.Count + 1)" -ForegroundColor White
-Write-Host "✅ Successful: $successCount" -ForegroundColor Green
-Write-Host "❌ Errors: $errorCount" -ForegroundColor Red
+Write-Host ("Total functions processed: {0}" -f ($nodeFunctions.Count + 1)) -ForegroundColor White
+Write-Host ("Successful: {0}" -f $successCount) -ForegroundColor Green
+Write-Host ("Errors: {0}" -f $errorCount) -ForegroundColor Red
 
 if ($errorCount -eq 0) {
     Write-Host ""
-    Write-Host "🎉 All Lambda function dependencies processed successfully!" -ForegroundColor Green
+    Write-Host "All Lambda function dependencies processed successfully!" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Yellow
     Write-Host "  1. Run 'terraform init' to initialize Terraform"
@@ -131,7 +131,7 @@ if ($errorCount -eq 0) {
     exit 0
 } else {
     Write-Host ""
-    Write-Host "⚠️  Some functions had issues. Please check the errors above." -ForegroundColor Yellow
+    Write-Host "Some functions had issues. Please check the errors above." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Troubleshooting tips:" -ForegroundColor Cyan
     Write-Host "  - Ensure Node.js and npm are installed and in your PATH"
