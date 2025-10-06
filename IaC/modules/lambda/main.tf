@@ -405,7 +405,12 @@ resource "aws_iam_policy" "step_functions_policy" {
       },
       {
         Effect = "Allow"
-        Action = "states:StartExecution"
+        Action = [
+          "states:StartExecution",
+          "states:ListExecutions",
+          "states:DescribeExecution",
+          "states:GetExecutionHistory"
+        ]
         Resource = [
           "arn:${data.aws_partition.current.partition}:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.stack_name}-ingest",
           "arn:${data.aws_partition.current.partition}:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.stack_name}-process",
