@@ -2,13 +2,13 @@
 
 aws_region    = "us-east-1"
 stack_name    = "vod"
-admin_email   = "villarinmon@gmail.com"
+admin_email   = "your@email"
 
 # Optional configurations
 workflow_trigger        = "VideoFile" # Options: "VideoFile", "MetadataFile"
 glacier                = "GLACIER" # Options: "GLACIER", "DEEP_ARCHIVE", "DISABLED"
 frame_capture          = "Yes" # Options: "Yes", "No"
-enable_media_package   = "Yes" # Options: "Yes", "No"
-enable_sns             = "No" # Options: "Yes", "No"
+enable_media_package   = "No" # Options: "Yes", "No"
+enable_sns             = "Yes" # Options: "Yes", "No"
 enable_sqs             = "Yes" # Options: "Yes", "No"
 accelerated_transcoding = "PREFERRED" # Options: "PREFERRED", "ENABLE", "DISABLED"
