@@ -136,6 +136,21 @@ resource "aws_iam_policy" "media_package_assets_policy" {
         Resource = "*"
       },
       {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "tag:TagResources",
+          "tag:UntagResource"
+        ]
+        Resource = "*"
+      },
+      {
         Effect   = "Allow"
         Action   = "lambda:InvokeFunction"
         Resource = aws_lambda_function.error_handler.arn

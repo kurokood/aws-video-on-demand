@@ -46,8 +46,19 @@ const convertEndpoints = (egressEndpoints, cloudFrontEndpoint) => {
     return updatedEndpoints;
 };
 
-const handler = async (event) => {
-    console.log(`REQUEST:: ${JSON.stringify(event, null, 2)}`);
+
+const handler = async (event, context) => {
+    const requestId = context && context.awsRequestId ? context.awsRequestId : crypto.randomBytes(8).toString('hex');
+    const log = (level, msg, obj) => {
+        const base = `[${level.toUpperCase()}][${requestId}]`;
+        if (obj) {
+            console.log(`${base} ${msg}`, obj);
+        } else {
+            console.log(`${base} ${msg}`);
+        }
+    };
+
+    log('info', 'REQUEST', event);
 
     const mediaPackageVod = new MediaPackageVod({
         region: process.env.AWS_REGION,
@@ -58,7 +69,7 @@ const handler = async (event) => {
     try {
         // Check if we have the required data for MediaPackage asset creation
         if (!event.hlsPlaylist && !event.srcVideo && !event.destBucket) {
-            console.log('No HLS playlist or video source found, skipping MediaPackage asset creation');
+            log('warn', 'No HLS playlist or video source found, skipping MediaPackage asset creation');
             return event;
         }
 
@@ -82,19 +93,43 @@ const handler = async (event) => {
             PackagingGroupId: process.env.GroupId,
             SourceArn: sourceArn,
             SourceRoleArn: process.env.MediaPackageVodRole,
-            ResourceId: randomId
+            ResourceId: randomId,
+            Tags: [
+                { Key: 'SolutionId', Value: 'SO0021' },
+                { Key: 'Name', Value: `vod-asset-${randomId}` }
+            ]
         };
-        params.Tags = {'SolutionId': 'SO0021'};
 
-        console.log(`Ingesting asset:: ${JSON.stringify(params, null, 2)}`);
+        log('info', 'Ingesting asset', params);
         const response = await mediaPackageVod.createAsset(params);
+        log('info', 'MediaPackage createAsset response', response);
         event.mediaPackageResourceId = randomId;
         event.egressEndpoints = convertEndpoints(response.EgressEndpoints, event.cloudFront);
-        console.log(`ENDPOINTS:: ${JSON.stringify(event.egressEndpoints, null, 2)}`);
+        log('info', 'ENDPOINTS', event.egressEndpoints);
     } catch (err) {
         // Error handling
-        console.error('Error creating MediaPackage asset:', err);
-        
+        log('error', 'Error creating MediaPackage asset', err);
+
+        // Emit custom CloudWatch metric for asset creation failure
+        try {
+            const cloudwatch = require('aws-sdk/clients/cloudwatch');
+            const cw = new cloudwatch();
+            await cw.putMetricData({
+                Namespace: 'VOD/MediaPackage',
+                MetricData: [{
+                    MetricName: 'AssetCreationFailure',
+                    Value: 1,
+                    Unit: 'Count',
+                    Dimensions: [
+                        { Name: 'Function', Value: 'media-package-assets' },
+                        { Name: 'GroupId', Value: process.env.GroupId || 'unknown' }
+                    ]
+                }]
+            }).promise();
+        } catch (cwErr) {
+            log('warn', 'Failed to emit CloudWatch metric', cwErr);
+        }
+
         const lambda = new LambdaClient({
             region: process.env.AWS_REGION,
             customUserAgent: process.env.SOLUTION_IDENTIFIER
@@ -103,7 +138,8 @@ const handler = async (event) => {
         const errorEvent = {
             ...event,
             error: err.message,
-            function: 'media-package-assets'
+            function: 'media-package-assets',
+            requestId
         };
 
         try {
@@ -112,9 +148,9 @@ const handler = async (event) => {
                 Payload: JSON.stringify(errorEvent)
             }));
         } catch (invokeErr) {
-            console.error('Error invoking error handler:', invokeErr);
+            log('error', 'Error invoking error handler', invokeErr);
         }
-        
+
         throw err;
     }
 
