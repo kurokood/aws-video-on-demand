@@ -47,8 +47,17 @@ foreach ($function in $nodeFunctions) {
     try {
         $npmArgs = @("install", "--production")
         if (-not $Verbose) { $npmArgs += "--silent" }
-        & npm @npmArgs
-        if ($LASTEXITCODE -eq 0) {
+        # Use Start-Process for external npm to avoid PowerShell parsing issues
+        # On Windows npm is often a cmd shim (npm.cmd). Running via cmd.exe ensures the shell resolves it correctly
+        $argString = $npmArgs -join ' '
+        try {
+            $proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c npm $argString" -NoNewWindow -Wait -PassThru
+            $exitCode = $proc.ExitCode
+        } catch {
+            Write-Error "  Failed to start npm via cmd.exe: $_"
+            $exitCode = 1
+        }
+        if ($exitCode -eq 0) {
             if (Test-Path "node_modules") {
                 $moduleCount = (Get-ChildItem "node_modules" -Directory).Count
                 Write-Host ("  Dependencies installed successfully ({0} modules)" -f $moduleCount) -ForegroundColor Green
@@ -58,7 +67,7 @@ foreach ($function in $nodeFunctions) {
                 $successCount++
             }
         } else {
-            Write-Error "  npm install failed with exit code $LASTEXITCODE"
+            Write-Error "  npm install failed with exit code $exitCode"
             $errorCount++
         }
     } catch {
