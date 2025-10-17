@@ -658,3 +658,7 @@ See the License for the specific language governing permissions and limitations 
 [accelerated-transcoding]:https://docs.aws.amazon.com/mediaconvert/latest/ug/accelerated-transcoding.html
 [vod-landing]:https://aws.amazon.com/solutions/video-on-demand-on-aws/
 [mediainfo-site]:https://mediaarea.net/en/MediaInfo
+###  Author: Mon Villarin
+ 📌 LinkedIn: [Ramon Villarin](https://www.linkedin.com/in/ramon-villarin/)  
+ 📌 Portfolio Site: [MonVillarin.com](https://monvillarin.com)  
+ 📌 Blog Post: [From Resume to the Cloud: How I Built and Deployed My Cloud Resume Challenge](https://blog.monvillarin.com/serverless-video-on-demand-platform-on-aws)
